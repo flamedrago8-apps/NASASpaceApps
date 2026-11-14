@@ -3,6 +3,8 @@ import { KeyRound, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { api, type ApiKey, type NewApiKey } from '../api';
 import { Button, Card, CopyButton, EmptyState, ErrorState, IconButton, Modal, PageHeader, Spinner, TextInput } from '../components/ui/kit';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { fmtNum } from '../lib/format';
 import { useToast } from '../state/toast';
 import { useAsync } from '../state/useAsync';
@@ -80,36 +82,34 @@ export function KeysPage() {
             ) : keys.data.length === 0 ? (
               <EmptyState icon={<KeyRound size={18} />} title="No API keys yet" body="Create a key, then point your OpenAI-compatible client at the gateway URL." action={<Button onClick={() => setCreating(true)}>Create key</Button>} />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-[12.5px]">
-                  <thead className="text-[11.5px] text-fg-subtle">
-                    <tr>
-                      <th className="px-4 pb-2 pt-3.5 font-normal">Name</th>
-                      <th className="px-4 pb-2 pt-3.5 font-normal">Key</th>
-                      <th className="px-4 pb-2 pt-3.5 font-normal">Created</th>
-                      <th className="px-4 pb-2 pt-3.5 font-normal">Last used</th>
-                      <th className="px-4 pb-2 pt-3.5 text-right font-normal">Requests</th>
-                      <th className="w-12 px-4 pb-2 pt-3.5" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {keys.data.map((k) => (
-                      <tr key={k.id} className="border-t border-white/[0.04]">
-                        <td className="px-4 py-3 text-fg">{k.name}</td>
-                        <td className="px-4 py-3 font-mono text-[12px] text-fg-muted">{k.prefix}••••••••</td>
-                        <td className="px-4 py-3 text-fg-muted">{new Date(k.createdAt).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-fg-muted">{ago(k.lastUsedAt)}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-fg-muted">{fmtNum(k.requests)}</td>
-                        <td className="px-3 py-3 text-right">
-                          <IconButton label={`Revoke ${k.name}`} onClick={() => setRevoking(k)} className="hover:text-danger">
-                            <Trash2 size={13} />
-                          </IconButton>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-5">Name</TableHead>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Last used</TableHead>
+                    <TableHead className="text-right">Requests</TableHead>
+                    <TableHead className="w-12" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {keys.data.map((k) => (
+                    <TableRow key={k.id}>
+                      <TableCell className="pl-5 font-medium">{k.name}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{k.prefix}••••••••</TableCell>
+                      <TableCell className="text-muted-foreground">{new Date(k.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-muted-foreground">{ago(k.lastUsedAt)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{fmtNum(k.requests)}</TableCell>
+                      <TableCell className="pr-3 text-right">
+                        <IconButton label={`Revoke ${k.name}`} onClick={() => setRevoking(k)} className="hover:text-danger">
+                          <Trash2 />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </Card>
 
@@ -146,7 +146,7 @@ export function KeysPage() {
         <p className="mb-3 flex items-start gap-2 text-security-amber">
           <TriangleAlert size={14} className="mt-0.5 shrink-0" /> This is the only time the full key is shown. Store it somewhere safe.
         </p>
-        <div className="flex items-center gap-1 rounded-lg border border-[#2a2a31] bg-white/[0.03] py-1 pl-3 pr-1">
+        <div className="flex items-center gap-1 rounded-lg border border-input bg-muted/50 py-1 pl-3 pr-1">
           <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-fg">{created?.secret}</code>
           {created && <CopyButton text={created.secret} label="Copy key" />}
         </div>
@@ -214,14 +214,16 @@ function Quickstart({ baseUrl }: { baseUrl: string }) {
       <p className="mb-3 text-[12px] leading-relaxed text-fg-subtle">
         One-line swap: the gateway is OpenAI-compatible, so point your existing client’s base URL at <code className="font-mono text-fg-muted">{baseUrl}</code> and use a gateway key. Nothing else in your app changes — Claude, GPT and Llama models all work through the same OpenAI SDK.
       </p>
-      <div className="mb-2 flex gap-1">
-        {(['python', 'node', 'curl'] as const).map((l) => (
-          <button key={l} onClick={() => setLang(l)} className={clsx('rounded-md px-2.5 py-1 text-[12px]', lang === l ? 'bg-white/[0.07] text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
-            {l === 'node' ? 'Node.js' : l === 'python' ? 'Python' : 'cURL'}
-          </button>
-        ))}
-      </div>
-      <pre className="overflow-x-auto rounded-xl border border-[#1f1f25] bg-[#0a0a0c] py-3 font-mono text-[12px] leading-relaxed text-fg-muted">
+      <Tabs value={lang} onValueChange={(v) => setLang(v as typeof lang)} className="mb-2">
+        <TabsList className="h-8">
+          {(['python', 'node', 'curl'] as const).map((l) => (
+            <TabsTrigger key={l} value={l} className="text-xs">
+              {l === 'node' ? 'Node.js' : l === 'python' ? 'Python' : 'cURL'}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <pre className="overflow-x-auto rounded-xl border border-border bg-background py-3 font-mono text-[12px] leading-relaxed text-fg-muted">
         {code.split('\n').map((line, i) => {
           const swap = /base_url=|baseURL:|curl https?:/.test(line);
           return (

@@ -20,7 +20,7 @@ export function computeNodeStats(traces: Trace[]): Record<string, NodeStat> {
   const out: Record<string, NodeStat> = {};
   const now = traces[0]?.ts ?? Date.now();
   for (const tr of traces) {
-    const bucket = BUCKETS - 1 - Math.floor((now - tr.ts) / BUCKET_MS);
+    const bucket = Math.min(BUCKETS - 1, BUCKETS - 1 - Math.floor((now - tr.ts) / BUCKET_MS));
     for (const s of tr.spans) {
       const st = (out[s.nodeId] ??= { count: 0, hits: 0, misses: 0, flagged: 0, durations: [], saved: 0, tokensSaved: 0, callsAvoided: 0, calls: 0, series: Array(BUCKETS).fill(0) });
       if (s.outcome === 'bypassed') continue;

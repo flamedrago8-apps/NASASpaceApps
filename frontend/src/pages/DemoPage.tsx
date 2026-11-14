@@ -6,7 +6,10 @@ import { api, PIPELINE_ID, type TestResult, type Trace } from '../api';
 import { ProfileSlider } from '../components/ProfileSlider';
 import { SavingsCounter } from '../components/SavingsCounter';
 import { StatusBadge } from '../components/trace/badges';
+import { Badge } from '../components/ui/badge';
+import { Button as UIButton } from '../components/ui/button';
 import { Card, PageHeader } from '../components/ui/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { CATALOG } from '../lib/catalog';
 import { fmtMs, fmtUsd } from '../lib/format';
 import { ACCENT } from '../lib/theme';
@@ -72,19 +75,26 @@ export function DemoPage() {
           </div>
 
           {/* ---- Console ---- */}
-          <section className="flex min-h-[560px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#1f1f25] bg-[#0b0b0d] xl:h-[calc(100dvh-330px)]">
-            <div className="flex items-center gap-2 border-b border-[#1f1f25] px-4 py-2.5">
+          <section className="flex min-h-[560px] min-w-0 flex-col overflow-hidden rounded-xl border bg-card xl:h-[calc(100dvh-330px)]">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
               <span className="flex gap-1.5" aria-hidden>
                 <span className="h-2.5 w-2.5 rounded-full bg-[#3a3a42]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#3a3a42]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#3a3a42]" />
               </span>
               <span className="ml-2 font-mono text-[12px] text-fg-subtle">POST /v1/chat/completions</span>
-              <select value={model} onChange={(e) => setModel(e.target.value)} className="ml-auto h-7 rounded-md border border-[#2a2a31] bg-[#141417] px-2 font-mono text-[11.5px] text-fg-muted outline-none" aria-label="Model">
-                {MODELS.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
+              <Select value={model} onValueChange={setModel}>
+                <SelectTrigger className="ml-auto h-7 w-44 font-mono text-xs" aria-label="Model">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODELS.map((m) => (
+                    <SelectItem key={m} value={m} className="font-mono text-xs">
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div ref={scroller} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 font-mono text-[12.5px]">
               {log.length === 0 && !busy && (
@@ -103,20 +113,19 @@ export function DemoPage() {
                 </div>
               )}
             </div>
-            <div className="border-t border-[#1f1f25] p-3">
+            <div className="border-t border-border p-3">
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {DEMO_PRESETS.map((p) => (
-                  <button
+                  <UIButton
                     key={p.label}
+                    variant="outline"
+                    size="sm"
                     onClick={() => send(p.prompt)}
                     disabled={busy}
-                    className={clsx(
-                      'rounded-md border px-2 py-1 text-[11.5px] transition-colors disabled:opacity-50',
-                      p.label === 'Jailbreak' || p.label === 'Injection' ? 'border-danger/30 text-danger/90 hover:bg-danger/10' : 'border-[#2a2a31] text-fg-muted hover:bg-white/[0.05] hover:text-fg',
-                    )}
+                    className={clsx('h-7 px-2.5 text-xs', (p.label === 'Jailbreak' || p.label === 'Injection') && 'border-destructive/40 text-danger hover:bg-destructive/10 hover:text-danger')}
                   >
                     {p.label}
-                  </button>
+                  </UIButton>
                 ))}
               </div>
               <form
@@ -124,13 +133,13 @@ export function DemoPage() {
                   e.preventDefault();
                   send(prompt);
                 }}
-                className="flex items-center gap-2 rounded-xl border border-[#2a2a31] bg-[#111114] px-3 focus-within:border-fg-subtle"
+                className="flex items-center gap-2 rounded-xl border border-input bg-popover px-3 focus-within:border-fg-subtle"
               >
                 <span className="font-mono text-[13px] text-efficiency">›</span>
                 <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Ask anything, or try to break it…" className="h-10 min-w-0 flex-1 bg-transparent font-mono text-[13px] text-fg outline-none placeholder:text-fg-subtle" aria-label="Prompt" />
-                <button type="submit" disabled={busy || !prompt.trim()} className="grid h-7 w-7 place-items-center rounded-md bg-fg text-canvas disabled:opacity-30" aria-label="Send">
-                  <CornerDownLeft size={14} />
-                </button>
+                <UIButton type="submit" size="icon" disabled={busy || !prompt.trim()} className="h-7 w-7" aria-label="Send">
+                  <CornerDownLeft />
+                </UIButton>
               </form>
             </div>
           </section>
@@ -154,7 +163,7 @@ export function DemoPage() {
                   </thead>
                   <tbody>
                     {honeypot.data.slice(0, 5).map((h) => (
-                      <tr key={h.id} className="border-t border-white/[0.04]" title={`Last prompt: ${h.lastPrompt}\n\nDecoy reply: ${h.lastReply}`}>
+                      <tr key={h.id} className="border-t border-border" title={`Last prompt: ${h.lastPrompt}\n\nDecoy reply: ${h.lastReply}`}>
                         <td className="max-w-0 truncate px-2 py-1.5 font-mono text-[11.5px] text-fg-muted">{h.id}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums text-fg">{h.attempts}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums text-[#F472B6]">{fmtMs(h.timeWastedMs)}</td>
@@ -179,7 +188,7 @@ function Exchange({ r }: { r: TestResult }) {
         <span className="text-efficiency">›</span>
         <span className="whitespace-pre-wrap break-words">{r.io?.input ?? r.prompt}</span>
       </div>
-      <div className={clsx('mt-2 rounded-lg border px-3 py-2.5', red ? 'border-danger/25 bg-danger/[0.04]' : 'border-[#1f1f25] bg-white/[0.02]')}>
+      <div className={clsx('mt-2 rounded-lg border px-3 py-2.5', red ? 'border-danger/25 bg-danger/[0.04]' : 'border-border bg-muted/50')}>
         <div className="mb-2 flex flex-wrap items-center gap-1.5 font-sans">
           <StatusBadge status={r.status} />
           {r.threatConfidence !== undefined && (
@@ -214,9 +223,9 @@ function Exchange({ r }: { r: TestResult }) {
 
 function Chip({ color, children }: { color: string; children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium" style={{ color, background: `${color}1a` }}>
+    <Badge variant="outline" className="border-transparent px-1.5 text-[11px]" style={{ color, background: `${color}1a` }}>
       {children}
-    </span>
+    </Badge>
   );
 }
 
@@ -233,14 +242,14 @@ function PathStrip({ trace }: { trace: Trace }) {
         return (
           <Fragment key={i}>
             {i > 0 && <span className="text-[10px] text-fg-subtle">→</span>}
-            <span className="inline-flex items-center gap-1 rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10.5px] text-fg-muted" title={s.detail}>
+            <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] text-fg-muted" title={s.detail}>
               <Icon size={11} style={{ color }} /> {c.label}
             </span>
           </Fragment>
         );
       })}
       {bypassed && (
-        <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-[#3a3a44] px-1.5 py-0.5 text-[10.5px] text-fg-subtle" title="The Search Intent Router decided no live data was needed">
+        <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-input px-1.5 py-0.5 text-[10.5px] text-fg-subtle" title="The Search Intent Router decided no live data was needed">
           {(() => {
             const Icon = CATALOG.serpApi.icon;
             return <Icon size={11} />;
@@ -254,7 +263,7 @@ function PathStrip({ trace }: { trace: Trace }) {
 
 function SecurityMonitor({ alert, attacks }: { alert: Trace | null; attacks: Trace[] }) {
   return (
-    <section className={clsx('overflow-hidden rounded-2xl border transition-colors duration-300', alert ? 'border-danger/60 bg-danger/[0.07]' : 'border-[#1f1f25] bg-[#0f0f12]')} aria-live="assertive">
+    <section className={clsx('overflow-hidden rounded-xl border transition-colors duration-300', alert ? 'border-destructive/60 bg-destructive/10' : 'bg-card')} aria-live="assertive">
       {alert ? (
         <div className="relative px-4 py-4">
           <div className="pointer-events-none absolute inset-0 animate-pulse bg-danger/10" aria-hidden />
@@ -280,10 +289,10 @@ function SecurityMonitor({ alert, attacks }: { alert: Trace | null; attacks: Tra
           <span className="text-[12px] text-fg-subtle">· all clear</span>
         </div>
       )}
-      <ul className="max-h-[180px] overflow-y-auto border-t border-white/[0.05] font-mono text-[11.5px]">
+      <ul className="max-h-[180px] overflow-y-auto border-t border-border font-mono text-[11.5px]">
         {attacks.length === 0 && <li className="px-4 py-3 text-fg-subtle">No attacks observed yet.</li>}
         {attacks.map((t) => (
-          <li key={t.id} className="flex items-center gap-2 border-b border-white/[0.03] px-4 py-1.5">
+          <li key={t.id} className="flex items-center gap-2 border-b border-border px-4 py-1.5">
             {t.leakedThreat ? <ShieldAlert size={12} className="shrink-0 text-security-amber" /> : t.status === 'honeypot' ? <Ghost size={12} className="shrink-0 text-[#F472B6]" /> : <ShieldAlert size={12} className="shrink-0 text-danger" />}
             <span className="shrink-0 text-fg-subtle">{new Date(t.ts).toLocaleTimeString([], { hour12: false })}</span>
             <span className={clsx('shrink-0', t.leakedThreat ? 'text-security-amber' : t.status === 'honeypot' ? 'text-[#F472B6]' : 'text-danger')}>{t.leakedThreat ? 'MISSED' : t.status === 'honeypot' ? 'TRAPPED' : 'BLOCKED'}</span>
@@ -342,7 +351,7 @@ function PiiCompare({ trace }: { trace: Trace | null }) {
             <table className="w-full text-left font-mono text-[11px]">
               <tbody>
                 {io.pii.map((p, i) => (
-                  <tr key={i} className="border-t border-white/[0.04]">
+                  <tr key={i} className="border-t border-border">
                     <td className="py-1 pr-2 text-fg-subtle">{p.type}</td>
                     <td className="py-1 pr-2 text-[#FBBF24]">{p.real}</td>
                     <td className="py-1 pr-2 text-fg-subtle">→</td>

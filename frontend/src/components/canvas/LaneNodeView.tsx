@@ -7,7 +7,7 @@ import type { LaneNode } from '../../types';
 function LaneNodeViewImpl({ data }: NodeProps<LaneNode>) {
   const a = ACCENT[PILLAR[data.pillar].accent];
   return (
-    <div className="h-full w-full rounded-2xl bg-white/[0.018]">
+    <div className="h-full w-full rounded-xl bg-muted/30">
       <div className="flex items-center gap-2 px-4 pt-3">
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.fg }} />
         <span className="text-[11px] font-medium text-fg-muted">{data.title}</span>

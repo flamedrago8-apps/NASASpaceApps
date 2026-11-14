@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, type ProviderId, type Settings, type SettingsPatch } from '../api';
 import { Toggle } from '../components/ui/controls';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Button, CopyButton, ErrorState, PageHeader, Spinner, TextInput } from '../components/ui/kit';
 import { useToast } from '../state/toast';
 import { useAsync } from '../state/useAsync';
@@ -92,29 +93,33 @@ export function SettingsPage() {
                 <Toggle checked={form.logging.redactPii} onChange={(v) => set('logging', { redactPii: v })} label="Redact PII in logs" color="#34D399" />
               </Row>
               <Row label="Retention">
-                <select value={form.logging.retentionDays} onChange={(e) => set('logging', { retentionDays: Number(e.target.value) })} className="h-8 rounded-lg border border-[#2a2a31] bg-[#141417] px-2.5 text-[12.5px] text-fg outline-none focus:border-fg-subtle">
-                  {[7, 14, 30, 90, 365].map((d) => (
-                    <option key={d} value={d}>
-                      {d} days
-                    </option>
-                  ))}
-                </select>
+<Select value={String(form.logging.retentionDays)} onValueChange={(v) => set('logging', { retentionDays: Number(v) })}>
+                  <SelectTrigger className="h-8 w-40 text-[13px]" aria-label="Retention">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[7, 14, 30, 90, 365].map((d) => (<SelectItem key={d} value={String(d)}>{d} days</SelectItem>))}
+                  </SelectContent>
+                </Select>
               </Row>
             </Section>
 
             <Section title="Gateway">
               <Row label="Base URL" hint="Point OpenAI-compatible clients here.">
-                <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] py-0.5 pl-2.5 pr-0.5">
+                <div className="flex items-center gap-1 rounded-lg bg-muted py-0.5 pl-2.5 pr-0.5">
                   <code className="max-w-[260px] truncate font-mono text-[12px] text-fg-muted">{s.gateway.baseUrl}</code>
                   <CopyButton text={s.gateway.baseUrl} label="Copy base URL" />
                 </div>
               </Row>
               <Row label="Region">
-                <select value={form.gateway.region} onChange={(e) => set('gateway', { region: e.target.value })} className="h-8 rounded-lg border border-[#2a2a31] bg-[#141417] px-2.5 text-[12.5px] text-fg outline-none focus:border-fg-subtle">
-                  {['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'].map((r) => (
-                    <option key={r}>{r}</option>
-                  ))}
-                </select>
+<Select value={form.gateway.region} onValueChange={(v) => set('gateway', { region: v })}>
+                  <SelectTrigger className="h-8 w-40 text-[13px]" aria-label="Region">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'].map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                  </SelectContent>
+                </Select>
               </Row>
             </Section>
           </div>
@@ -123,7 +128,7 @@ export function SettingsPage() {
 
       {dirty && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
-          <div className="pointer-events-auto flex animate-toast-in items-center gap-3 rounded-xl border border-[#2a2a31] bg-[#18181c] py-2 pl-4 pr-2 shadow-2xl shadow-black/60">
+          <div className="pointer-events-auto flex animate-toast-in items-center gap-3 rounded-xl border border-input bg-popover py-2 pl-4 pr-2 shadow-2xl shadow-black/60">
             <span className="text-[12.5px] text-fg-muted">Unsaved changes</span>
             <Button
               variant="ghost"
@@ -152,7 +157,7 @@ function Section({ title, body, children }: { title: string; body?: string; chil
         <h2 className="text-[13px] font-medium text-fg">{title}</h2>
         {body && <p className="mt-1 text-[12px] leading-relaxed text-fg-subtle">{body}</p>}
       </div>
-      <div className="divide-y divide-white/[0.05] rounded-2xl border border-[#1f1f25] bg-[#0f0f12]">{children}</div>
+      <div className="divide-y rounded-xl border bg-card">{children}</div>
     </section>
   );
 }
@@ -178,7 +183,7 @@ function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: 
           <div className="text-[12.5px] text-fg">{name}</div>
           <div className="mt-0.5 text-[11.5px] text-fg-subtle">{hint}</div>
         </div>
-        {!editing && state.source === 'env' && <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[10.5px] text-fg-subtle">from env</span>}
+        {!editing && state.source === 'env' && <span className="rounded bg-muted px-1.5 py-0.5 text-[10.5px] text-fg-subtle">from env</span>}
         {!editing && (
           <span className={clsx('flex items-center gap-1.5 text-[12px]', state.configured ? 'text-fg-muted' : 'text-fg-subtle')}>
             <span className={clsx('h-1.5 w-1.5 rounded-full', state.configured ? 'bg-efficiency' : 'bg-[#3a3a44]')} />

@@ -33,7 +33,7 @@ function niceMax(v: number) {
 function Tooltip({ x, y, width, children }: { x: number; y: number; width: number; children: ReactNode }) {
   const left = Math.min(Math.max(8, x + 12), width - 188);
   return (
-    <div className="pointer-events-none absolute z-10 w-44 rounded-lg border border-[#2a2a31] bg-[#16161a] px-2.5 py-2 text-[11.5px] shadow-xl shadow-black/50" style={{ left, top: Math.max(0, y) }}>
+    <div className="pointer-events-none absolute z-10 w-44 rounded-lg border border-input bg-popover px-2.5 py-2 text-[11.5px] shadow-xl shadow-black/50" style={{ left, top: Math.max(0, y) }}>
       {children}
     </div>
   );
@@ -211,7 +211,7 @@ export function BarList({ items, fmt }: { items: { id: string; label: string; va
               {i.sub && <span className="ml-1.5 text-fg-subtle">{i.sub}</span>}
             </span>
           </div>
-          <div className="h-2 rounded-full bg-white/[0.04]">
+          <div className="h-2 rounded-full bg-muted">
             <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.max(1.5, (i.value / max) * 100)}%`, background: i.color }} />
           </div>
         </li>
@@ -224,9 +224,9 @@ export function BarList({ items, fmt }: { items: { id: string; label: string; va
 
 export function DataTable({ columns, rows }: { columns: string[]; rows: (string | number)[][] }) {
   return (
-    <div className="max-h-[240px] overflow-auto rounded-lg border border-[#1f1f25]">
+    <div className="max-h-[240px] overflow-auto rounded-lg border border-border">
       <table className="w-full text-left text-[12px]">
-        <thead className="sticky top-0 bg-[#141417] text-fg-subtle">
+        <thead className="sticky top-0 bg-popover text-fg-subtle">
           <tr>
             {columns.map((c, i) => (
               <th key={c} className={`px-3 py-1.5 font-normal ${i ? 'text-right' : ''}`}>
@@ -237,7 +237,7 @@ export function DataTable({ columns, rows }: { columns: string[]; rows: (string 
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className="border-t border-white/[0.04]">
+            <tr key={i} className="border-t border-border">
               {r.map((c, j) => (
                 <td key={j} className={`px-3 py-1.5 tabular-nums ${j ? 'text-right text-fg' : 'text-fg-muted'}`}>
                   {c}

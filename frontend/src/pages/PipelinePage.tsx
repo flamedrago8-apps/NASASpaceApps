@@ -158,7 +158,7 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
       <div className="flex h-full min-h-0 flex-col">
         <PageHeader
           title={meta.name}
-          subtitle={<span className="rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[11px]">v{meta.deployedVersion}</span>}
+          subtitle={<span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px]">v{meta.deployedVersion}</span>}
           actions={
             <>
               <span className="hidden lg:block">
@@ -166,7 +166,7 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
               </span>
               <SaveIndicator state={saveState} hasDraft={meta.hasDraft} />
               <button onClick={() => setLive(!live)} className="flex items-center gap-2 text-[12px] text-fg-muted hover:text-fg" aria-pressed={live}>
-                <span className={clsx('relative h-[18px] w-8 rounded-full transition-colors', live ? 'bg-efficiency' : 'bg-[#2a2a32]')}>
+                <span className={clsx('relative h-[18px] w-8 rounded-full transition-colors', live ? 'bg-efficiency' : 'bg-input')}>
                   <span className={clsx('absolute top-[2px] h-3.5 w-3.5 rounded-full bg-canvas transition-all', live ? 'left-[16px]' : 'left-[2px]')} />
                 </span>
                 <span className="hidden sm:inline">{live ? 'Live' : 'Paused'}</span>
@@ -188,7 +188,7 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
           <CanvasToolbar onTest={() => sendTest(false)} onAttack={() => sendTest(true)} />
 
           {selected && (
-            <aside className="absolute bottom-3 right-3 top-3 z-30 w-[360px] max-w-[calc(100%-1.5rem)] animate-toast-in overflow-hidden rounded-2xl border border-[#26262c] bg-[#111114]/95 shadow-2xl shadow-black/60 backdrop-blur">
+            <aside className="absolute bottom-3 right-3 top-3 z-30 w-[360px] max-w-[calc(100%-1.5rem)] animate-toast-in overflow-hidden rounded-xl border border-border bg-popover/95 shadow-2xl shadow-black/60 backdrop-blur">
               <NodeInspector
                 key={selected.id}
                 node={selected}
@@ -213,7 +213,7 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
           )}
         </div>
 
-        <div className="relative shrink-0 border-t border-[#1c1c21]" style={{ height: logsOpen ? logsH : LOGS_COLLAPSED }}>
+        <div className="relative shrink-0 border-t border-border" style={{ height: logsOpen ? logsH : LOGS_COLLAPSED }}>
           {logsOpen && <div onPointerDown={startResize} className="absolute inset-x-0 -top-1 z-10 h-2 cursor-row-resize" role="separator" aria-orientation="horizontal" aria-label="Resize logs" />}
           <LiveTrace traces={traces} expanded={logsOpen} onToggleExpanded={() => setLogsOpen((o) => !o)} onHover={setHovered} onSelectNode={setSelectedId} toolbarExtra={<Button size="sm" variant="ghost" onClick={() => navigate('/traces')}>Open traces</Button>} />
         </div>
@@ -319,7 +319,7 @@ function HistoryModal({ open, current, onClose, onRestore }: { open: boolean; cu
       ) : (
         <ul className="-mx-2 max-h-[50vh] overflow-y-auto">
           {list.map((d) => (
-            <li key={d.version} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-white/[0.03]">
+            <li key={d.version} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-muted/50">
               <span className="w-10 text-[12.5px] tabular-nums text-fg">v{d.version}</span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[12.5px] text-fg-muted">{d.note || 'No note'}</div>

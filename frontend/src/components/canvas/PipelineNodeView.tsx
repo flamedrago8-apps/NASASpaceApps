@@ -61,11 +61,11 @@ function PipelineNodeViewImpl({ id, data, selected }: NodeProps<PipelineNode>) {
   return (
     <div
       className={clsx(
-        'group relative flex items-center gap-2.5 rounded-xl border bg-[#141417] pl-2 pr-3 transition-[opacity,border-color,box-shadow] duration-200',
+        'group relative flex items-center gap-2.5 rounded-xl border bg-popover pl-2 pr-3 transition-[opacity,border-color,box-shadow] duration-200',
         dimmed && !searchBypassed && 'opacity-35',
-        searchBypassed && 'border-dashed !border-[#3a3a44] opacity-60 grayscale',
+        searchBypassed && 'border-dashed !border-input opacity-60 grayscale',
         !data.enabled && 'opacity-50',
-        selected ? 'border-fg/70' : lit ? 'border-fg/35' : 'border-[#26262c] hover:border-[#3a3a44]',
+        selected ? 'border-fg/70' : lit ? 'border-fg/35' : 'border-border hover:border-input',
       )}
       style={{ width: NODE_W, height: NODE_H, boxShadow: selected ? '0 0 0 3px rgba(237,237,239,0.08)' : undefined }}
     >

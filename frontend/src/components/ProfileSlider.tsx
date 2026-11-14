@@ -3,6 +3,8 @@ import { Gauge } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, type Profile } from '../api';
 import { useToast } from '../state/toast';
+import { Segmented } from './ui/kit';
+import { Slider } from './ui/slider';
 
 const STOPS: { id: Profile; label: string; desc: string; color: string }[] = [
   { id: 'eco', label: 'Eco', desc: 'Cheapest model in family (Haiku · GPT-4o-mini) · max 1 search · searches only when clearly needed', color: '#34D399' },
@@ -49,18 +51,12 @@ export function ProfileSlider({ compact }: { compact?: boolean }) {
     return (
       <div className="flex items-center gap-2" title={stop.desc}>
         <Gauge size={14} className="text-fg-subtle" />
-        <div role="radiogroup" aria-label="Cost vs speed" className="flex h-7 items-center rounded-lg bg-white/[0.04] p-0.5">
-          {STOPS.map((s) => (
-            <button key={s.id} role="radio" aria-checked={profile === s.id} onClick={() => setProfile(s.id)} className={clsx('h-full rounded-md px-2 text-[11.5px] transition-colors', profile === s.id ? 'bg-white/[0.09] text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <Segmented label="Cost vs speed" value={(profile ?? 'balanced') as Profile} options={STOPS.map((s) => ({ id: s.id, label: s.label }))} onChange={setProfile} />
       </div>
     );
 
   return (
-    <div className="rounded-2xl border border-[#1f1f25] bg-[#0f0f12] p-4">
+    <div className="rounded-xl border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
         <Gauge size={14} className="text-fg-subtle" />
         <span className="text-[12.5px] font-medium text-fg">Cost vs Speed</span>
@@ -68,19 +64,7 @@ export function ProfileSlider({ compact }: { compact?: boolean }) {
           {profile ? stop.label : '…'}
         </span>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={2}
-        step={1}
-        value={idx}
-        disabled={!profile}
-        onChange={(e) => setProfile(STOPS[Number(e.target.value)].id)}
-        aria-label="Cost vs speed"
-        aria-valuetext={stop.label}
-        className="range w-full"
-        style={{ background: `linear-gradient(90deg, #34D399, #A1A1AA 50%, #A78BFA)`, ['--thumb' as string]: stop.color }}
-      />
+      <Slider min={0} max={2} step={1} value={[idx]} disabled={!profile} onValueChange={([v]) => setProfile(STOPS[v].id)} aria-label="Cost vs speed" rangeStyle={{ backgroundColor: stop.color }} />
       <div className="mt-1.5 flex justify-between text-[11px] text-fg-subtle">
         {STOPS.map((s) => (
           <button key={s.id} onClick={() => setProfile(s.id)} className={clsx('hover:text-fg', profile === s.id && 'text-fg')}>

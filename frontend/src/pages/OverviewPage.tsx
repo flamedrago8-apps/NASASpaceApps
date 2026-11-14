@@ -62,7 +62,7 @@ export function OverviewPage() {
             </div>
 
             {/* KPI row */}
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[#1f1f25] bg-[#1f1f25] md:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-[#1f1f25] md:grid-cols-3 xl:grid-cols-6">
               <Kpi label="Saved in range" value={fmtUsd(s.saved)} sub={`${fmtPct(s.saved / Math.max(1e-9, s.costNaive))} of naive spend`} hero />
               <Kpi label="Spend" value={fmtUsd(s.costActual)} sub={`vs ${fmtUsd(s.costNaive)} without gateway`} />
               <Kpi label="Requests" value={fmtNum(s.requests)} sub={`p50 ${fmtMs(s.latencyP50)} · p95 ${fmtMs(s.latencyP95)}`} />
@@ -114,7 +114,7 @@ export function OverviewPage() {
                         { id: 'security', label: 'Security · attacks never billed', value: s.savedByPillar.security, color: CHART.security, sub: fmtPct(s.savedByPillar.security / Math.max(1e-9, s.saved)) },
                       ]}
                     />
-                    <div className="mt-5 border-t border-[#1f1f25] pt-4">
+                    <div className="mt-5 border-t border-border pt-4">
                       <div className="mb-2 flex items-center gap-2 text-[12px] text-fg-muted">
                         <ShieldAlert size={13} style={{ color: CHART.security }} /> Security impact
                       </div>
@@ -159,7 +159,7 @@ export function OverviewPage() {
                   <ul>
                     {threats.map((t) => (
                       <li key={t.id}>
-                        <button onClick={() => navigate(`/traces?id=${t.id}`)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-white/[0.03]">
+                        <button onClick={() => navigate(`/traces?id=${t.id}`)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-muted/50">
                           <StatusBadge status={t.status} />
                           <span className="min-w-0 flex-1 truncate text-[12px] text-fg-muted">{t.prompt}</span>
                           {t.leakedThreat && <span className="text-[11px] text-security-amber">missed</span>}
@@ -183,7 +183,7 @@ export function OverviewPage() {
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub: string; hero?: boolean }) {
   return (
-    <div className="bg-[#0f0f12] px-4 py-3.5">
+    <div className="bg-card px-4 py-3.5">
       <div className="text-[11.5px] text-fg-subtle">{label}</div>
       <div className={clsx('mt-1 text-[20px] font-medium tabular-nums tracking-tight', hero ? 'text-efficiency' : 'text-fg')}>{value}</div>
       <div className="mt-0.5 truncate text-[11px] text-fg-subtle" title={sub}>
@@ -195,7 +195,7 @@ function Kpi({ label, value, sub, hero }: { label: string; value: string; sub: s
 
 function TableToggle({ on, onClick }: { on?: boolean; onClick: () => void }) {
   return (
-    <IconButton label={on ? 'Show chart' : 'Show as table'} onClick={onClick} className={on ? 'bg-white/[0.06] text-fg' : undefined}>
+    <IconButton label={on ? 'Show chart' : 'Show as table'} onClick={onClick} className={on ? 'bg-accent text-fg' : undefined}>
       <Table2 size={14} />
     </IconButton>
   );

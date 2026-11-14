@@ -9,7 +9,7 @@ import { ACCENT, PILLAR } from '../../lib/theme';
 import type { NodeKind, Trace } from '../../types';
 import { DND_MIME } from './FlowCanvas';
 
-const pill = 'rounded-xl border border-[#26262c] bg-[#121215]/90 backdrop-blur';
+const pill = 'rounded-xl border border-border bg-popover/90 backdrop-blur';
 
 /** Top-left: four headline numbers, nothing else. */
 export function StatsPill({ summary, traces }: { summary: Summary | undefined; traces: Trace[] }) {
@@ -22,7 +22,7 @@ export function StatsPill({ summary, traces }: { summary: Summary | undefined; t
     { k: 'searches avoided', v: s ? fmtNum(Math.max(0, s.searchesNaive - s.searchesSent)) : '—' },
   ];
   return (
-    <div className={clsx(pill, 'absolute left-4 top-4 z-10 hidden items-center divide-x divide-[#26262c] md:flex')}>
+    <div className={clsx(pill, 'absolute left-4 top-4 z-10 hidden items-center divide-x divide-border md:flex')}>
       {items.map((i) => (
         <div key={i.k} className="flex items-baseline gap-1.5 px-3.5 py-2">
           <span className="text-[13px] font-medium tabular-nums text-fg">{i.v}</span>
@@ -50,7 +50,7 @@ export function CanvasToolbar({ onTest, onAttack }: { onTest: () => void; onAtta
           <Minus size={15} />
         </button>
       </div>
-      <button onClick={onTest} className="flex h-10 items-center gap-2 rounded-xl bg-fg px-4 text-[13px] font-medium text-canvas shadow-lg shadow-black/40 hover:bg-white">
+      <button onClick={onTest} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-medium text-background shadow-lg shadow-black/40 hover:bg-primary/90">
         <Play size={14} fill="currentColor" /> Test request
       </button>
       <button onClick={onAttack} className={clsx(pill, 'grid h-10 w-10 place-items-center text-fg-muted hover:text-danger')} title="Simulate an attack" aria-label="Simulate an attack">
@@ -77,8 +77,8 @@ export function NodeDrawer({ onAdd }: { onAdd: (kind: NodeKind) => void }) {
         {open ? <X size={16} /> : <Plus size={18} />}
       </button>
       {open && (
-        <div className={clsx(pill, 'absolute right-4 top-16 z-20 flex max-h-[calc(100%-6rem)] w-72 flex-col overflow-hidden bg-[#121215] shadow-2xl shadow-black/60')}>
-          <div className="flex items-center gap-2 border-b border-[#26262c] px-3 py-2.5">
+        <div className={clsx(pill, 'absolute right-4 top-16 z-20 flex max-h-[calc(100%-6rem)] w-72 flex-col overflow-hidden bg-popover shadow-2xl shadow-black/60')}>
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <Search size={14} className="text-fg-subtle" />
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search nodes…" className="w-full bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-subtle" />
           </div>
@@ -102,7 +102,7 @@ export function NodeDrawer({ onAdd }: { onAdd: (kind: NodeKind) => void }) {
                         onAdd(k);
                         setOpen(false);
                       }}
-                      className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-white/[0.04]"
+                      className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-muted"
                     >
                       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg" style={{ background: a.soft, color: a.fg }}>
                         <Icon size={14} />

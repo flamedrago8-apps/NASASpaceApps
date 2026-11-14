@@ -1,7 +1,7 @@
 # Conduit: AI Gateway & Search Optimizer dashboard
 
 Frontend for an AI gateway that sits between apps and LLM providers. It runs on
-Vite, React 18, TypeScript, Tailwind 3 and React Flow 12.
+Vite, React 18, TypeScript, **shadcn/ui + Tailwind CSS** (Radix primitives) and React Flow 12.
 
 ```bash
 cd frontend
@@ -40,6 +40,6 @@ src/
 To add a node type, add an entry to `CATALOG` in `src/lib/catalog.ts`. Its
 settings form, palette entry and canvas card are all generated from that entry.
 
-Design tokens are in `tailwind.config.js` and mirrored in `src/lib/theme.ts`.
+UI components are **shadcn/ui** (`src/components/ui/*`, configured by `components.json`), so you can add more with `npx shadcn@latest add <component>`. The theme is the shadcn CSS variables in `src/index.css` (dark zinc); pillar accent colors live in `tailwind.config.js` and `src/lib/theme.ts`.
 Chart colors (`CHART` in `components/charts/charts.tsx`) were validated for the
 dark background: they pass the color-blind and contrast checks.

@@ -70,7 +70,7 @@ export function SavingsCounter({ compact }: { compact?: boolean }) {
   const pct = naive > 0 ? (saved / naive) * 100 : 0;
 
   return (
-    <div className={clsx('relative overflow-hidden rounded-2xl border border-[#1f1f25] bg-[#0f0f12]', compact ? 'p-4' : 'p-5 sm:p-6')}>
+    <div className={clsx('relative overflow-hidden rounded-xl border border-border bg-card', compact ? 'p-4' : 'p-5 sm:p-6')}>
       <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-efficiency/10 blur-3xl" aria-hidden />
       <div className="relative flex flex-wrap items-end gap-x-10 gap-y-4">
         <div className="min-w-0">
@@ -95,7 +95,7 @@ export function SavingsCounter({ compact }: { compact?: boolean }) {
           {!compact && <Figure label="Requests" value={base ? requests.toLocaleString() : '—'} />}
         </div>
       </div>
-      <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.05]" title={`Actual spend is ${(100 - pct).toFixed(1)}% of what the same traffic would cost without the gateway`}>
+      <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-muted" title={`Actual spend is ${(100 - pct).toFixed(1)}% of what the same traffic would cost without the gateway`}>
         <div className="h-full rounded-full bg-[#059669] transition-[width] duration-700" style={{ width: `${Math.max(0, Math.min(100, 100 - pct))}%` }} />
       </div>
       <div className="relative mt-1.5 flex justify-between text-[11px] text-fg-subtle">
