@@ -2,6 +2,8 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { Component, type ReactNode } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { Button, EmptyState } from './components/ui/kit';
+import { ProfileProvider } from './components/ProfileSlider';
+import { DemoPage } from './pages/DemoPage';
 import { KeysPage } from './pages/KeysPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PipelinePage } from './pages/PipelinePage';
@@ -15,6 +17,9 @@ export default function App() {
   const route = useRoute();
   let page: ReactNode;
   switch (route.path) {
+    case '/demo':
+      page = <DemoPage />;
+      break;
     case '/overview':
       page = <OverviewPage />;
       break;
@@ -37,6 +42,7 @@ export default function App() {
   return (
     <ToastProvider>
       <TraceProvider>
+        <ProfileProvider>
         <ReactFlowProvider>
           <div className="flex h-[100dvh] w-full overflow-hidden bg-canvas text-fg">
             <Sidebar path={route.path} />
@@ -45,6 +51,7 @@ export default function App() {
             </main>
           </div>
         </ReactFlowProvider>
+        </ProfileProvider>
       </TraceProvider>
     </ToastProvider>
   );

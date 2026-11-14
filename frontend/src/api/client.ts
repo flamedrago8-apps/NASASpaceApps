@@ -1,6 +1,8 @@
 import type {
   ApiKey,
   Deployment,
+  HoneypotSession,
+  Lifetime,
   NewApiKey,
   PipelineDoc,
   Range,
@@ -9,6 +11,7 @@ import type {
   SettingsPatch,
   Summary,
   TestRequest,
+  TestResult,
   Trace,
   TracePage,
   TraceQuery,
@@ -33,10 +36,16 @@ export interface GatewayApi {
   listTraces(q: TraceQuery): Promise<TracePage>;
   /** Live stream of new traces. Returns an unsubscribe function. */
   streamTraces(onTrace: (t: Trace) => void, onError?: (e: unknown) => void): () => void;
-  sendTestRequest(req: TestRequest): Promise<Trace>;
+  /** Runs one request through the current draft. With `prompt`, that exact prompt (Live demo console). */
+  sendTestRequest(req: TestRequest): Promise<TestResult>;
 
   getSummary(range: Range): Promise<Summary>;
   getTimeseries(range: Range): Promise<SeriesPoint[]>;
+  /** All-time totals since the gateway started — drives the live savings counter. */
+  getLifetime(): Promise<Lifetime>;
+
+  /** Attackers currently trapped in the honeypot. */
+  listHoneypotSessions(): Promise<HoneypotSession[]>;
 
   listKeys(): Promise<ApiKey[]>;
   createKey(name: string): Promise<NewApiKey>;

@@ -5,6 +5,8 @@ import { api, type Range } from '../api';
 import { BarList, CHART, ColumnChart, DataTable, LegendKey, LineChart } from '../components/charts/charts';
 import { StatusBadge } from '../components/trace/badges';
 import { Card, ErrorState, IconButton, PageHeader, Segmented, Spinner } from '../components/ui/kit';
+import { ProfileSlider } from '../components/ProfileSlider';
+import { SavingsCounter } from '../components/SavingsCounter';
 import { fmtMs, fmtNum, fmtPct, fmtUsd } from '../lib/format';
 import { navigate } from '../state/router';
 import { useTraces } from '../state/traces';
@@ -39,7 +41,7 @@ export function OverviewPage() {
   const pts = series.data ?? [];
   const fx = fmtBucket(range);
   const refetching = summary.loading || series.loading;
-  const threats = traces.filter((t) => t.status === 'blocked' || t.status === 'flagged' || t.leakedThreat).slice(0, 6);
+  const threats = traces.filter((t) => t.status === 'blocked' || t.status === 'honeypot' || t.status === 'flagged' || t.leakedThreat).slice(0, 6);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -54,12 +56,17 @@ export function OverviewPage() {
           <Spinner label="Loading metrics" />
         ) : (
           <div className={clsx('mx-auto max-w-[1280px] space-y-4 p-4 transition-opacity sm:p-5', refetching && 'opacity-80')}>
+            <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+              <SavingsCounter compact />
+              <ProfileSlider />
+            </div>
+
             {/* KPI row */}
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[#1f1f25] bg-[#1f1f25] md:grid-cols-3 xl:grid-cols-6">
-              <Kpi label="Money saved" value={fmtUsd(s.saved)} sub={`${fmtPct(s.saved / Math.max(1e-9, s.costNaive))} of naive spend`} hero />
+              <Kpi label="Saved in range" value={fmtUsd(s.saved)} sub={`${fmtPct(s.saved / Math.max(1e-9, s.costNaive))} of naive spend`} hero />
               <Kpi label="Spend" value={fmtUsd(s.costActual)} sub={`vs ${fmtUsd(s.costNaive)} without gateway`} />
               <Kpi label="Requests" value={fmtNum(s.requests)} sub={`p50 ${fmtMs(s.latencyP50)} · p95 ${fmtMs(s.latencyP95)}`} />
-              <Kpi label="Threats blocked" value={fmtNum(s.blocked)} sub={`${fmtNum(s.flagged)} flagged for review`} />
+              <Kpi label="Threats stopped" value={fmtNum(s.blocked)} sub={`${fmtNum(s.honeypotted)} trapped in honeypot`} />
               <Kpi label="Cache hit rate" value={fmtPct(s.cacheHits / Math.max(1, s.requests))} sub={`${fmtNum(s.tokensSaved)} tokens saved`} />
               <Kpi label="Searches avoided" value={fmtNum(Math.max(0, s.searchesNaive - s.searchesSent))} sub={`${fmtNum(s.searchesSent)} sent of ${fmtNum(s.searchesNaive)}`} />
             </div>
@@ -104,6 +111,7 @@ export function OverviewPage() {
                       items={[
                         { id: 'efficiency', label: 'Efficiency · caching & compression', value: s.savedByPillar.efficiency, color: CHART.efficiency, sub: fmtPct(s.savedByPillar.efficiency / Math.max(1e-9, s.saved)) },
                         { id: 'search', label: 'SerpAPI routing', value: s.savedByPillar.search, color: CHART.search, sub: fmtPct(s.savedByPillar.search / Math.max(1e-9, s.saved)) },
+                        { id: 'security', label: 'Security · attacks never billed', value: s.savedByPillar.security, color: CHART.security, sub: fmtPct(s.savedByPillar.security / Math.max(1e-9, s.saved)) },
                       ]}
                     />
                     <div className="mt-5 border-t border-[#1f1f25] pt-4">
@@ -111,7 +119,7 @@ export function OverviewPage() {
                         <ShieldAlert size={13} style={{ color: CHART.security }} /> Security impact
                       </div>
                       <p className="text-[12px] leading-relaxed text-fg-subtle">
-                        <span className="tabular-nums text-fg">{fmtNum(s.blocked)}</span> malicious requests never reached a model. Security isn’t counted as savings — it’s risk avoided.
+                        <span className="tabular-nums text-fg">{fmtNum(s.blocked)}</span> malicious requests never reached a model; <span className="tabular-nums text-fg">{fmtNum(s.honeypotted)}</span> were kept busy by the honeypot instead.
                       </p>
                       <ul className="mt-3 space-y-1.5">
                         {s.threats.map((t) => (
@@ -164,7 +172,7 @@ export function OverviewPage() {
             </div>
 
             <div className="flex items-center gap-2 px-1 pb-2 text-[11.5px] text-fg-subtle">
-              <TrendingUp size={13} /> Savings compare each request’s actual cost to what the same request would cost sent straight to the model and SerpAPI.
+              <TrendingUp size={13} /> Savings are measured per request against a naive baseline: the model the client asked for, no caching or compression, and a SerpAPI search on every prompt (the full query fan-out when live data is needed).
             </div>
           </div>
         )}

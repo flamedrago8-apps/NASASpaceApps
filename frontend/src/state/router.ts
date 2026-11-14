@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 export type Route = { path: string; query: URLSearchParams };
 
 function parse(): Route {
-  const raw = window.location.hash.replace(/^#/, '') || '/pipeline';
+  const raw = window.location.hash.replace(/^#/, '') || '/demo';
   const [path, qs = ''] = raw.split('?');
-  return { path: path || '/pipeline', query: new URLSearchParams(qs) };
+  return { path: path || '/demo', query: new URLSearchParams(qs) };
 }
 
 export function useRoute(): Route {

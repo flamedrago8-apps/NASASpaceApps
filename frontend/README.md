@@ -10,7 +10,7 @@ npm run dev        # http://localhost:5173
 npm run build
 ```
 
-With no backend configured it runs on an in-browser mock. A "Demo data" badge in
+With no backend configured it runs an in-browser demo: the same pipeline engine as the backend (`../core`), with simulated model and search providers. A "Demo data" badge in
 the top-right says so, and its menu sets the simulated traffic rate or resets
 the demo. To connect a real backend, set `VITE_API_URL` (see **[API.md](./API.md)**
 for the full contract).
@@ -19,6 +19,7 @@ for the full contract).
 
 | Route | What it does |
 | --- | --- |
+| `#/demo` | Live demo (default page). A gateway console with attack/PII/cache/search presets, red attack alerts with confidence, the PII round trip side by side, honeypot sessions, the ticking savings counter and the Cost vs Speed slider. |
 | `#/overview` | KPIs, with-vs-without-gateway spend chart, savings by pillar, request volume, recent threats. Time ranges are 1h, 24h, 7d and 30d, and every chart has a table view. |
 | `#/pipeline` | Node canvas for the three pillars (Security, Efficiency, SerpAPI routing). Drafts autosave, Deploy takes an optional note, and History restores old versions. Click a node to open its settings, and open Logs at the bottom for live traces. `?node=<id>` opens a node directly. |
 | `#/traces` | Full trace explorer: filters, search, step-by-step span detail, cost per trace, paging back through older traces, and JSON export. `?status=blocked` and `?id=<traceId>` deep-link into it. |

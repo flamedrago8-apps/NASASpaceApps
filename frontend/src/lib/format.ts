@@ -1,4 +1,5 @@
 export function fmtMs(ms: number): string {
+  if (ms < 0.1) return '<0.1ms';
   if (ms < 1) return `${ms.toFixed(1)}ms`;
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(2)}s`;

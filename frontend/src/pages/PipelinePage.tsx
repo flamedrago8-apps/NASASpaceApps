@@ -4,6 +4,7 @@ import { History, LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, PIPELINE_ID, type Deployment, type PipelineDoc } from '../api';
 import { CanvasToolbar, NodeDrawer, StatsPill } from '../components/canvas/CanvasChrome';
+import { ProfileSlider } from '../components/ProfileSlider';
 import { FlowCanvas } from '../components/canvas/FlowCanvas';
 import { NodeInspector } from '../components/inspector/NodeInspector';
 import { LiveTrace } from '../components/trace/LiveTrace';
@@ -160,6 +161,9 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
           subtitle={<span className="rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[11px]">v{meta.deployedVersion}</span>}
           actions={
             <>
+              <span className="hidden lg:block">
+                <ProfileSlider compact />
+              </span>
               <SaveIndicator state={saveState} hasDraft={meta.hasDraft} />
               <button onClick={() => setLive(!live)} className="flex items-center gap-2 text-[12px] text-fg-muted hover:text-fg" aria-pressed={live}>
                 <span className={clsx('relative h-[18px] w-8 rounded-full transition-colors', live ? 'bg-efficiency' : 'bg-[#2a2a32]')}>

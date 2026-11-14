@@ -1,4 +1,4 @@
-import type { PipelineDoc, PipelineEdgeDTO, PipelineNodeDTO } from '../api/types';
+import { LANE, type PipelineDoc, type PipelineEdgeDTO, type PipelineNodeDTO } from '@conduit/core';
 import { CATALOG } from './catalog';
 import { ACCENT, PILLAR } from './theme';
 import type { AppNode, LaneNode, NodeKind, PacketEdge, Pillar, PipelineNode } from '../types';
@@ -6,11 +6,10 @@ import type { AppNode, LaneNode, NodeKind, PacketEdge, Pillar, PipelineNode } fr
 export const NODE_W = 196;
 export const NODE_H = 54;
 
-const LANE_X = 170;
-const LANE_W = 1052;
-const LANE_H = 156;
-const laneY: Record<Exclude<Pillar, 'core'>, number> = { security: 0, efficiency: 204, search: 408 };
-const rowY = (p: Exclude<Pillar, 'core'>) => laneY[p] + 62;
+const LANE_X = LANE.x;
+const LANE_W = LANE.width;
+const LANE_H = LANE.height;
+const laneY: Record<Exclude<Pillar, 'core'>, number> = LANE.y;
 
 function lane(pillar: Exclude<Pillar, 'core'>): LaneNode {
   return {
@@ -57,58 +56,7 @@ export function makeEdge(id: string, source: string, sourceKind: NodeKind, targe
   };
 }
 
-// ---- Default pipeline -----------------------------------------------------------------------
-
-const COL = [210, 460, 710, 960];
-const DEFAULT_LAYOUT: [NodeKind, number, number][] = [
-  ['ingress', -90, rowY('security')],
-  ['injection', COL[0], rowY('security')],
-  ['jailbreak', COL[1], rowY('security')],
-  ['pii', COL[2], rowY('security')],
-  ['block', COL[3], rowY('security')],
-  ['exactCache', COL[0], rowY('efficiency')],
-  ['semanticCache', COL[1], rowY('efficiency')],
-  ['compressor', COL[2], rowY('efficiency')],
-  ['searchIntent', COL[0], rowY('search')],
-  ['serpCache', COL[1], rowY('search')],
-  ['queryOptimizer', COL[2], rowY('search')],
-  ['serpApi', COL[3], rowY('search')],
-  ['llm', 1290, rowY('search')],
-  ['response', 1540, (rowY('efficiency') + rowY('search')) / 2],
-];
-
-const DEFAULT_EDGES: [NodeKind, NodeKind, ('out' | 'alt')?][] = [
-  ['ingress', 'injection'],
-  ['injection', 'jailbreak'],
-  ['injection', 'block', 'alt'],
-  ['jailbreak', 'pii'],
-  ['jailbreak', 'block', 'alt'],
-  ['pii', 'exactCache'],
-  ['exactCache', 'semanticCache'],
-  ['exactCache', 'response', 'alt'],
-  ['semanticCache', 'compressor'],
-  ['semanticCache', 'response', 'alt'],
-  ['compressor', 'searchIntent'],
-  ['searchIntent', 'serpCache'],
-  ['searchIntent', 'llm', 'alt'],
-  ['serpCache', 'queryOptimizer'],
-  ['serpCache', 'llm', 'alt'],
-  ['queryOptimizer', 'serpApi'],
-  ['serpApi', 'llm'],
-  ['llm', 'response'],
-];
-
-export function defaultPipelineDoc(id: string): PipelineDoc {
-  return {
-    id,
-    name: id,
-    deployedVersion: 14,
-    hasDraft: false,
-    updatedAt: new Date().toISOString(),
-    nodes: DEFAULT_LAYOUT.map(([kind, x, y]) => ({ id: kind, kind, label: CATALOG[kind].label, position: { x, y }, enabled: true, config: { ...CATALOG[kind].defaults } })),
-    edges: DEFAULT_EDGES.map(([s, t, h = 'out']) => ({ id: `${s}->${t}`, source: s, target: t, sourceHandle: h })),
-  };
-}
+export { defaultPipelineDoc } from '@conduit/core';
 
 // ---- Doc <-> React Flow ---------------------------------------------------------------------
 

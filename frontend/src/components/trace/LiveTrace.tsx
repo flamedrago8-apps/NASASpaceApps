@@ -17,6 +17,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'ok', label: 'Completed' },
   { id: 'cache_hit', label: 'Cache hits' },
   { id: 'search', label: 'Web search' },
+  { id: 'honeypot', label: 'Honeypot' },
   { id: 'flagged', label: 'Flagged' },
   { id: 'blocked', label: 'Blocked' },
 ];

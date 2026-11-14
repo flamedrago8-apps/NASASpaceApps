@@ -5,6 +5,8 @@ const STATUS: Record<TraceStatus, { label: string; color: string; bg: string }> 
   cache_hit: { label: 'Cache hit', color: '#34D399', bg: 'rgba(52,211,153,0.10)' },
   blocked: { label: 'Blocked', color: '#F87171', bg: 'rgba(248,113,113,0.10)' },
   flagged: { label: 'Flagged', color: '#FBBF24', bg: 'rgba(251,191,36,0.10)' },
+  honeypot: { label: 'Honeypot', color: '#F472B6', bg: 'rgba(244,114,182,0.10)' },
+  error: { label: 'Error', color: '#F87171', bg: 'rgba(248,113,113,0.10)' },
 };
 
 export function StatusBadge({ status }: { status: TraceStatus }) {
@@ -27,6 +29,7 @@ const OUTCOME: Record<SpanOutcome, { color: string }> = {
   skipped: { color: '#22D3EE' },
   called: { color: '#EDEDEF' },
   redacted: { color: '#A78BFA' },
+  trapped: { color: '#F472B6' },
 };
 
 export function OutcomeBadge({ outcome }: { outcome: SpanOutcome }) {

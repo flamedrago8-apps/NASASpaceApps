@@ -185,7 +185,7 @@ const SNIPPETS = (base: string) => ({
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="${base}",
+    base_url="${base}",  # ← the only change
     api_key=os.environ["CONDUIT_API_KEY"],
 )
 
@@ -196,7 +196,7 @@ resp = client.chat.completions.create(
   node: `import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "${base}",
+  baseURL: "${base}", // ← the only change
   apiKey: process.env.CONDUIT_API_KEY,
 });
 
@@ -212,7 +212,7 @@ function Quickstart({ baseUrl }: { baseUrl: string }) {
   return (
     <Card title="Quickstart" actions={<CopyButton text={code} label="Copy snippet" />}>
       <p className="mb-3 text-[12px] leading-relaxed text-fg-subtle">
-        The gateway is OpenAI-compatible. Swap your client’s base URL to <code className="font-mono text-fg-muted">{baseUrl}</code> and use a gateway key — no other code changes.
+        One-line swap: the gateway is OpenAI-compatible, so point your existing client’s base URL at <code className="font-mono text-fg-muted">{baseUrl}</code> and use a gateway key. Nothing else in your app changes — Claude, GPT and Llama models all work through the same OpenAI SDK.
       </p>
       <div className="mb-2 flex gap-1">
         {(['python', 'node', 'curl'] as const).map((l) => (
@@ -221,7 +221,16 @@ function Quickstart({ baseUrl }: { baseUrl: string }) {
           </button>
         ))}
       </div>
-      <pre className="overflow-x-auto rounded-xl border border-[#1f1f25] bg-[#0a0a0c] p-4 font-mono text-[12px] leading-relaxed text-fg-muted">{code}</pre>
+      <pre className="overflow-x-auto rounded-xl border border-[#1f1f25] bg-[#0a0a0c] py-3 font-mono text-[12px] leading-relaxed text-fg-muted">
+        {code.split('\n').map((line, i) => {
+          const swap = /base_url=|baseURL:|curl https?:/.test(line);
+          return (
+            <div key={i} className={clsx('px-4', swap && 'border-l-2 border-efficiency bg-efficiency/10 text-fg')}>
+              {line || ' '}
+            </div>
+          );
+        })}
+      </pre>
     </Card>
   );
 }

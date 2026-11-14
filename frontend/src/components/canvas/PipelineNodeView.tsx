@@ -20,7 +20,10 @@ function metricLine(kind: NodeKind, st: NodeStat | undefined): string {
       parts.push(`${fmtNum(st.hits)} blocked`);
       break;
     case 'redacted':
-      parts.push(`${fmtNum(st.hits)} redacted`);
+      parts.push(`${fmtNum(st.hits)} swapped`);
+      break;
+    case 'trapped':
+      parts.push(`${fmtNum(st.count)} trapped`);
       break;
     case 'hitRate':
       parts.push(`${fmtPct(st.hits / st.count)} hit`);
@@ -52,12 +55,15 @@ function PipelineNodeViewImpl({ id, data, selected }: NodeProps<PipelineNode>) {
   const dimmed = highlight && !lit;
   const inputSide = c.input === undefined ? 'left' : c.input;
   const unwired = !(id in CATALOG);
+  // When the focused trace skipped live search, grey out the search nodes it never touched.
+  const searchBypassed = !!highlight && !lit && c.pillar === 'search' && data.kind !== 'searchIntent' && !!lastFocusBypassed(highlight);
 
   return (
     <div
       className={clsx(
         'group relative flex items-center gap-2.5 rounded-xl border bg-[#141417] pl-2 pr-3 transition-[opacity,border-color,box-shadow] duration-200',
-        dimmed && 'opacity-35',
+        dimmed && !searchBypassed && 'opacity-35',
+        searchBypassed && 'border-dashed !border-[#3a3a44] opacity-60 grayscale',
         !data.enabled && 'opacity-50',
         selected ? 'border-fg/70' : lit ? 'border-fg/35' : 'border-[#26262c] hover:border-[#3a3a44]',
       )}
@@ -70,7 +76,7 @@ function PipelineNodeViewImpl({ id, data, selected }: NodeProps<PipelineNode>) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[12.5px] font-medium leading-tight text-fg">{data.label}</div>
-        <div className="mt-0.5 truncate text-[11px] leading-tight text-fg-subtle">{data.enabled ? metricLine(data.kind, st) : 'Bypassed'}</div>
+        <div className="mt-0.5 truncate text-[11px] leading-tight text-fg-subtle">{searchBypassed ? 'Bypassed — internal knowledge sufficient' : data.enabled ? metricLine(data.kind, st) : 'Bypassed'}</div>
       </div>
       {(unwired || !data.enabled) && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: unwired ? ACCENT.amber.fg : '#4a4a52' }} title={unwired ? 'Not wired into live traffic' : 'Bypassed'} />}
 
@@ -80,5 +86,8 @@ function PipelineNodeViewImpl({ id, data, selected }: NodeProps<PipelineNode>) {
     </div>
   );
 }
+
+/** The highlight set carries the trace's path; search was bypassed if it went straight from the router to the LLM. */
+const lastFocusBypassed = (h: { nodes: Set<string>; edges: Set<string> }) => h.edges.has('searchIntent->llm');
 
 export const PipelineNodeView = memo(PipelineNodeViewImpl);

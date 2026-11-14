@@ -1,9 +1,10 @@
-# Backend API contract
+# Dashboard API contract
 
 The dashboard talks to the backend only through the `GatewayApi` interface in
 `src/api/client.ts`. Request and response shapes are the TypeScript types in
-`src/api/types.ts` (and `Trace`/`Span` in `src/types.ts`). Those files are the
-source of truth. This page summarizes them.
+[`core/src/types.ts`](../core/src/types.ts), which the backend imports too, so
+the two can't drift. The reference implementation is
+[`backend/src/server.ts`](../backend/src/server.ts). This page summarizes it.
 
 ## Connecting a backend
 
@@ -11,7 +12,7 @@ The frontend reads three build-time variables. Copy `.env.example` to `.env.loca
 
 | Variable | Purpose |
 | --- | --- |
-| `VITE_API_URL` | Base URL of your backend, e.g. `https://api.yourgateway.com`. **When unset, the in-browser mock is used.** |
+| `VITE_API_URL` | Base URL of your backend, e.g. `https://api.yourgateway.com`. Use `/` when the backend serves the dashboard itself. **When unset, the in-browser demo runs** (the same pipeline engine with simulated upstreams). |
 | `VITE_API_TOKEN` | Optional. Sent as `Authorization: Bearer …`, and as `?access_token=` on the SSE stream. Cookies are always sent (`credentials: 'include'`), so session auth works too. |
 | `VITE_PIPELINE_ID` | Pipeline to edit. Default `chat-default`. |
 
@@ -24,6 +25,14 @@ Errors: any non-2xx response. A body of `{ "error": { "message": "…" } }` or
 `{ "message": "…" }` is shown to the user as a toast.
 
 ## Endpoints
+
+### Gateway (for your apps, not the dashboard)
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/v1/chat/completions` | gateway key (`cdt_live_…`) | OpenAI-compatible, including `stream: true`. Blocked requests return 403 with an OpenAI-style error body. |
+| GET | `/v1/models` | – | The models the router knows. |
+
+All other endpoints below are the dashboard API, protected by `ADMIN_TOKEN`.
 
 ### Pipelines
 | Method | Path | Body | Returns |
@@ -48,13 +57,13 @@ branches are: threat → Block, cache hit → Response, no search / SERP cache h
 ### Traces
 | Method | Path | Query | Returns |
 | --- | --- | --- | --- |
-| GET | `/v1/traces` | `status` (`ok`, `cache_hit`, `blocked`, `flagged`, `search`), `q`, `limit`, `before` (ms timestamp cursor) | `{ items: Trace[], nextBefore?: number }` |
+| GET | `/v1/traces` | `status` (`ok`, `cache_hit`, `blocked`, `honeypot`, `flagged`, `error`, `search`), `q`, `limit`, `before` (ms timestamp cursor) | `{ items: Trace[], nextBefore?: number }` |
 | GET | `/v1/traces/stream` | `access_token?` | **Server-Sent Events.** One `event: trace` per request, with `data:` set to a JSON `Trace`. |
-| POST | `/v1/test-requests` | body `{ pipelineId, attack?, prompt? }` | `Trace` |
+| POST | `/v1/test-requests` | body `{ pipelineId, prompt?, model?, attack? }` | `TestResult` (`Trace` + `response` text). Runs the **draft** pipeline, so you can try changes before deploying. |
 
 For each `Trace`, emit one `Span` per node the request passed through, in order.
 Give each span a `start` offset and a `duration` in ms, and an `outcome`
-(`pass | hit | miss | blocked | flagged | bypassed | skipped | called | redacted`).
+(`pass | hit | miss | blocked | flagged | bypassed | skipped | called | redacted | trapped`).
 `saved` is the USD that step saved. `path` is the list of visited node ids;
 `edges` lists the traversed `"source->target"` ids.
 
@@ -72,6 +81,12 @@ ROI fields on each trace:
 | --- | --- | --- | --- |
 | GET | `/v1/metrics/summary` | `range` = `1h \| 24h \| 7d \| 30d` | `Summary` |
 | GET | `/v1/metrics/timeseries` | `range` | `SeriesPoint[]` (oldest first; about 30–60 buckets) |
+| GET | `/v1/metrics/lifetime` | – | `Lifetime`: all-time naive vs actual spend, which drives the live savings counter |
+
+### Security
+| Method | Path | Returns |
+| --- | --- | --- |
+| GET | `/v1/security/honeypot` | `HoneypotSession[]`: trapped attackers, attempts, time wasted, last prompt and decoy reply |
 
 ### API keys
 | Method | Path | Body | Returns |
@@ -87,11 +102,27 @@ ROI fields on each trace:
 | PATCH | `/v1/settings` | `SettingsPatch` | `Settings` |
 
 `providerKeys` is write-only. Send a string to set or replace a key, or `""` to
-remove it.
+remove it. Keys supplied by environment variables show `source: "env"` and can't be
+changed from the dashboard.
+
+`routing.profile` (`eco` | `balanced` | `performance`) is the global **Cost vs Speed**
+setting. It takes effect immediately for all traffic and isn't part of the pipeline deploy.
+
+## How savings are measured
+
+Every trace compares `costActual` with `costBaseline`, which is what the same request
+would cost with no gateway:
+- the model the client asked for;
+- no caching or compression;
+- a SerpAPI search on every prompt, and the full query fan-out (question + keyword +
+  freshness variants, plus each side of a comparison) when the prompt needs live data.
+
+Each span's `saved` field attributes part of the difference to the node that earned
+it. Overview sums those by pillar.
 
 ## Swapping in the backend
 
-1. Implement the endpoints above.
+1. Run `backend/` (it already implements everything above), or implement the endpoints yourself.
 2. Build with `VITE_API_URL` set. The Pages workflow already reads it: add a
    repository **variable** named `VITE_API_URL` under Settings → Secrets and
    variables → Actions → Variables, then re-run the deploy.

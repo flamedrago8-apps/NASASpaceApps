@@ -68,6 +68,8 @@ export function createHttpApi(baseUrl: string, token?: string): GatewayApi {
 
     getSummary: (range) => req('GET', `/v1/metrics/summary${qs({ range })}`),
     getTimeseries: (range) => req('GET', `/v1/metrics/timeseries${qs({ range })}`),
+    getLifetime: () => req('GET', `/v1/metrics/lifetime`),
+    listHoneypotSessions: () => req('GET', `/v1/security/honeypot`),
 
     listKeys: () => req('GET', `/v1/keys`),
     createKey: (name) => req('POST', `/v1/keys`, { name }),

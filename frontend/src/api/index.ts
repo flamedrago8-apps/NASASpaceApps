@@ -2,6 +2,7 @@ import type { GatewayApi } from './client';
 import { createHttpApi } from './http';
 import { createMockApi, type MockControls } from './mock';
 
+// "/" means "same origin as the dashboard" (the backend serves the built dashboard).
 const url = import.meta.env.VITE_API_URL as string | undefined;
 const token = import.meta.env.VITE_API_TOKEN as string | undefined;
 

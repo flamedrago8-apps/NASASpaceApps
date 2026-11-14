@@ -80,7 +80,7 @@ export function SettingsPage() {
               <div className="grid gap-4 p-4 sm:grid-cols-2">
                 <TextInput label="Monthly budget" type="number" min={0} suffix="USD" value={form.budget.monthlyUsd} onChange={(e) => set('budget', { monthlyUsd: Math.max(0, Number(e.target.value) || 0) })} />
                 <TextInput label="Alert at" type="number" min={1} max={100} suffix="% of budget" value={form.budget.alertAtPct} onChange={(e) => set('budget', { alertAtPct: Math.min(100, Math.max(1, Number(e.target.value) || 1)) })} />
-                <TextInput className="sm:col-span-2" label="Alert webhook" type="url" placeholder="https://hooks.slack.com/…" value={form.budget.webhookUrl} onChange={(e) => set('budget', { webhookUrl: e.target.value })} hint="Receives a POST with spend, budget and threats blocked. Also fires on every blocked attack if enabled on the Block node." />
+                <TextInput className="sm:col-span-2" label="Alert webhook" type="url" placeholder="https://hooks.slack.com/…" value={form.budget.webhookUrl} onChange={(e) => set('budget', { webhookUrl: e.target.value })} hint="Receives a POST when spend crosses the alert threshold, and on blocked or honeypotted attacks (at most one every 10 seconds)." />
               </div>
             </Section>
 
@@ -169,7 +169,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
-function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: string; hint: string; placeholder: string; state: { configured: boolean; last4?: string }; value: string | undefined; onChange: (v: string | undefined) => void }) {
+function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: string; hint: string; placeholder: string; state: { configured: boolean; last4?: string; source?: 'env' | 'dashboard' }; value: string | undefined; onChange: (v: string | undefined) => void }) {
   const editing = value !== undefined;
   return (
     <div className="px-4 py-3.5">
@@ -178,6 +178,7 @@ function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: 
           <div className="text-[12.5px] text-fg">{name}</div>
           <div className="mt-0.5 text-[11.5px] text-fg-subtle">{hint}</div>
         </div>
+        {!editing && state.source === 'env' && <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[10.5px] text-fg-subtle">from env</span>}
         {!editing && (
           <span className={clsx('flex items-center gap-1.5 text-[12px]', state.configured ? 'text-fg-muted' : 'text-fg-subtle')}>
             <span className={clsx('h-1.5 w-1.5 rounded-full', state.configured ? 'bg-efficiency' : 'bg-[#3a3a44]')} />
@@ -188,7 +189,7 @@ function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: 
           <Button size="sm" variant="ghost" onClick={() => onChange(undefined)}>
             Cancel
           </Button>
-        ) : (
+        ) : state.source === 'env' ? null : (
           <Button size="sm" onClick={() => onChange('')}>
             {state.configured ? 'Replace' : 'Add key'}
           </Button>

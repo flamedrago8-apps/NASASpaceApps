@@ -1,8 +1,9 @@
 import clsx from 'clsx';
-import { Activity, KeyRound, LayoutDashboard, Settings, Workflow } from 'lucide-react';
+import { Activity, KeyRound, LayoutDashboard, Settings, Siren, Workflow } from 'lucide-react';
 import { navigate } from '../../state/router';
 
 export const NAV = [
+  { path: '/demo', icon: Siren, label: 'Live demo' },
   { path: '/overview', icon: LayoutDashboard, label: 'Overview' },
   { path: '/pipeline', icon: Workflow, label: 'Pipeline' },
   { path: '/traces', icon: Activity, label: 'Traces' },
