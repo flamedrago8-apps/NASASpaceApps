@@ -2,7 +2,7 @@ import { useReactFlow } from '@xyflow/react';
 import clsx from 'clsx';
 import { Bug, Maximize, Minus, Play, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { Totals } from '../../hooks/useTrafficSimulator';
+import type { Summary } from '../../api';
 import { CATALOG, PALETTE } from '../../lib/catalog';
 import { fmtNum, fmtPct, fmtUsd } from '../../lib/format';
 import { ACCENT, PILLAR } from '../../lib/theme';
@@ -12,13 +12,14 @@ import { DND_MIME } from './FlowCanvas';
 const pill = 'rounded-xl border border-[#26262c] bg-[#121215]/90 backdrop-blur';
 
 /** Top-left: four headline numbers, nothing else. */
-export function StatsPill({ traces, totals }: { traces: Trace[]; totals: Totals }) {
+export function StatsPill({ summary, traces }: { summary: Summary | undefined; traces: Trace[] }) {
   const hit = useMemo(() => traces.filter((t) => t.status === 'cache_hit').length / Math.max(1, traces.length), [traces]);
+  const s = summary;
   const items = [
-    { k: 'saved today', v: fmtUsd(totals.saved), c: ACCENT.green.fg },
-    { k: 'threats blocked', v: fmtNum(totals.blocked), c: ACCENT.purple.fg },
-    { k: 'cache hit', v: fmtPct(hit), c: ACCENT.green.fg },
-    { k: 'searches avoided', v: fmtNum(totals.searchAvoided), c: ACCENT.cyan.fg },
+    { k: 'saved · 24h', v: s ? fmtUsd(s.saved) : '—' },
+    { k: 'threats blocked', v: s ? fmtNum(s.blocked) : '—' },
+    { k: 'cache hit · live', v: traces.length ? fmtPct(hit) : '—' },
+    { k: 'searches avoided', v: s ? fmtNum(Math.max(0, s.searchesNaive - s.searchesSent)) : '—' },
   ];
   return (
     <div className={clsx(pill, 'absolute left-4 top-4 z-10 hidden items-center divide-x divide-[#26262c] md:flex')}>

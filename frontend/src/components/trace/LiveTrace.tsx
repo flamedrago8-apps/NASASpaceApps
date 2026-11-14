@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { ChevronRight, ChevronUp, Search, TriangleAlert } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type ReactNode } from 'react';
 import { CATALOG } from '../../lib/catalog';
 import { fmtMs, fmtTime, fmtUsd } from '../../lib/format';
 import { ACCENT } from '../../lib/theme';
@@ -11,7 +11,7 @@ const COLS = 'grid grid-cols-[14px_92px_minmax(180px,1.4fr)_92px_minmax(200px,1.
 const SCALE_MS = 4000;
 const TICKS = [0, 1000, 2000, 3000, 4000];
 
-type Filter = 'all' | TraceStatus | 'search';
+export type Filter = 'all' | TraceStatus | 'search';
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'ok', label: 'Completed' },
@@ -23,26 +23,31 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 type Props = {
   traces: Trace[];
-  expanded: boolean;
-  onToggleExpanded: () => void;
-  rate: number;
-  onRate: (r: number) => void;
-  onHover: (t: Trace | null) => void;
-  onSelectNode: (id: string) => void;
+  /** 'drawer' = collapsible bottom panel on the canvas; 'page' = full-page explorer. */
+  variant?: 'drawer' | 'page';
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  onHover?: (t: Trace | null) => void;
+  onSelectNode?: (id: string) => void;
+  initialFilter?: Filter;
+  initialOpenId?: string | null;
+  toolbarExtra?: ReactNode;
+  footer?: ReactNode;
 };
 
-export function LiveTrace({ traces, expanded, onToggleExpanded, rate, onRate, onHover, onSelectNode }: Props) {
-  const [filter, setFilter] = useState<Filter>('all');
+export function LiveTrace({ traces, variant = 'drawer', expanded = true, onToggleExpanded, onHover, onSelectNode, initialFilter = 'all', initialOpenId = null, toolbarExtra, footer }: Props) {
+  const [filter, setFilter] = useState<Filter>(initialFilter);
   const [q, setQ] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(initialOpenId);
+  const isPage = variant === 'page';
 
   const rows = useMemo(() => {
     const ql = q.trim().toLowerCase();
     return traces
       .filter((t) => (filter === 'all' ? true : filter === 'search' ? t.searchRaw > 0 && t.status !== 'blocked' : t.status === filter))
       .filter((t) => !ql || t.id.includes(ql) || t.prompt.toLowerCase().includes(ql) || t.app.includes(ql) || t.model.includes(ql))
-      .slice(0, 120);
-  }, [traces, filter, q]);
+      .slice(0, isPage ? 1000 : 120);
+  }, [traces, filter, q, isPage]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: traces.length, search: 0 };
@@ -58,11 +63,13 @@ export function LiveTrace({ traces, expanded, onToggleExpanded, rate, onRate, on
   return (
     <div className="flex h-full min-h-0 flex-col bg-canvas">
       <div className="flex h-11 shrink-0 items-center gap-3 px-4">
-        <button onClick={onToggleExpanded} className="flex items-center gap-2 text-[13px] font-medium text-fg" aria-expanded={expanded}>
-          <ChevronUp size={15} className={clsx('text-fg-subtle transition-transform', expanded && 'rotate-180')} />
-          Logs
-          <span className="text-[12px] font-normal tabular-nums text-fg-subtle">{traces.length}</span>
-        </button>
+        {!isPage && (
+          <button onClick={onToggleExpanded} className="flex items-center gap-2 text-[13px] font-medium text-fg" aria-expanded={expanded}>
+            <ChevronUp size={15} className={clsx('text-fg-subtle transition-transform', expanded && 'rotate-180')} />
+            Logs
+            <span className="text-[12px] font-normal tabular-nums text-fg-subtle">{traces.length}</span>
+          </button>
+        )}
 
         {expanded ? (
           <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
@@ -94,13 +101,7 @@ export function LiveTrace({ traces, expanded, onToggleExpanded, rate, onRate, on
               <Search size={13} className="text-fg-subtle" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="w-36 bg-transparent text-[12px] text-fg outline-none placeholder:text-fg-subtle" />
             </div>
-            <div className="flex h-7 items-center rounded-lg bg-white/[0.04] p-0.5" title="Traffic rate">
-              {[1, 2, 5].map((r) => (
-                <button key={r} onClick={() => onRate(r)} className={clsx('h-full rounded-md px-2 text-[11px] tabular-nums', rate === r ? 'bg-white/[0.08] text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
-                  {r}×
-                </button>
-              ))}
-            </div>
+            {toolbarExtra}
           </div>
         )}
       </div>
@@ -130,7 +131,8 @@ export function LiveTrace({ traces, expanded, onToggleExpanded, rate, onRate, on
             {rows.map((t) => (
               <TraceRow key={t.id} t={t} open={open === t.id} onToggle={() => setOpen((o) => (o === t.id ? null : t.id))} onHover={onHover} onSelectNode={onSelectNode} />
             ))}
-            {rows.length === 0 && <div className="px-4 py-10 text-center text-[12px] text-fg-subtle">No requests match.</div>}
+            {rows.length === 0 && <div className="px-4 py-10 text-center text-[12px] text-fg-subtle">{traces.length ? 'No requests match.' : 'Waiting for traffic…'}</div>}
+            {footer}
           </div>
         </div>
       )}
@@ -143,10 +145,10 @@ function spanColor(s: Span) {
   return ACCENT[CATALOG[s.kind].accent].fg;
 }
 
-const TraceRow = memo(function TraceRow({ t, open, onToggle, onHover, onSelectNode }: { t: Trace; open: boolean; onToggle: () => void; onHover: (t: Trace | null) => void; onSelectNode: (id: string) => void }) {
+const TraceRow = memo(function TraceRow({ t, open, onToggle, onHover, onSelectNode }: { t: Trace; open: boolean; onToggle: () => void; onHover?: (t: Trace | null) => void; onSelectNode?: (id: string) => void }) {
   const visible = t.spans.filter((s) => s.outcome !== 'bypassed');
   return (
-    <div className={clsx('animate-row-in', open && 'bg-white/[0.02]')} onMouseEnter={() => onHover(t)} onMouseLeave={() => onHover(null)}>
+    <div className={clsx('animate-row-in', open && 'bg-white/[0.02]')} onMouseEnter={() => onHover?.(t)} onMouseLeave={() => onHover?.(null)}>
       <button onClick={onToggle} className={clsx(COLS, 'w-full px-4 py-[7px] text-left hover:bg-white/[0.03]')}>
         <ChevronRight size={13} className={clsx('text-fg-subtle transition-transform', open && 'rotate-90')} />
         <span className="text-[12px] tabular-nums text-fg-subtle">{fmtTime(t.ts).slice(0, 8)}</span>
@@ -196,7 +198,7 @@ function Waterfall({ spans, scale }: { spans: Span[]; scale: number }) {
   );
 }
 
-function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode: (id: string) => void }) {
+function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string) => void }) {
   const total = Math.max(t.latency, 1);
   return (
     <div className="grid gap-4 px-4 pb-4 pt-1 lg:grid-cols-[1fr_320px]">
@@ -215,7 +217,7 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode: (id: string)
           const color = spanColor(s);
           return (
             <div key={i} className={clsx('grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] items-center gap-x-3 border-b border-white/[0.04] px-3 py-1.5 last:border-0', s.outcome === 'bypassed' && 'opacity-45')}>
-              <button onClick={() => onSelectNode(s.nodeId)} className="flex min-w-0 items-center gap-2 text-left text-[12px] text-fg-muted hover:text-fg">
+              <button onClick={() => onSelectNode?.(s.nodeId)} className="flex min-w-0 items-center gap-2 text-left text-[12px] text-fg-muted hover:text-fg">
                 <span className="font-mono text-2xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
                 <Icon size={13} style={{ color }} />
                 <span className="truncate">{s.name}</span>

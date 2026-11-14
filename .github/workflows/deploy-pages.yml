@@ -29,6 +29,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+        env:
+          # Set these under Settings → Secrets and variables → Actions → Variables. Empty = demo mode.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_PIPELINE_ID: ${{ vars.VITE_PIPELINE_ID }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist

@@ -279,12 +279,8 @@ export function simulateRequest(live: LiveConfig, opts: SimOptions = {}): Trace 
   return finish();
 }
 
-export function liveConfigFrom(nodes: { id: string; type?: string; data: unknown }[]): LiveConfig {
+export function liveConfigFromDoc(doc: { nodes: { id: string; enabled: boolean; config: NodeConfig }[] }): LiveConfig {
   const out: LiveConfig = {};
-  for (const n of nodes) {
-    if (n.type !== 'pipeline' || !(n.id in CATALOG)) continue;
-    const d = n.data as { enabled: boolean; config: NodeConfig };
-    out[n.id as NodeKind] = { enabled: d.enabled, config: d.config };
-  }
+  for (const n of doc.nodes) if (n.id in CATALOG) out[n.id as NodeKind] = { enabled: n.enabled, config: n.config };
   return out;
 }

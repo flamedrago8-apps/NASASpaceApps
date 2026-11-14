@@ -1,3 +1,4 @@
+import type { PipelineDoc, PipelineEdgeDTO, PipelineNodeDTO } from '../api/types';
 import { CATALOG } from './catalog';
 import { ACCENT, PILLAR } from './theme';
 import type { AppNode, LaneNode, NodeKind, PacketEdge, Pillar, PipelineNode } from '../types';
@@ -26,6 +27,8 @@ function lane(pillar: Exclude<Pillar, 'core'>): LaneNode {
   };
 }
 
+const LANES = [lane('security'), lane('efficiency'), lane('search')];
+
 export function makeNode(kind: NodeKind, id: string, x: number, y: number): PipelineNode {
   const c = CATALOG[kind];
   return {
@@ -37,62 +40,103 @@ export function makeNode(kind: NodeKind, id: string, x: number, y: number): Pipe
   };
 }
 
-const COL = [210, 460, 710, 960];
-
-export const initialNodes: AppNode[] = [
-  lane('security'),
-  lane('efficiency'),
-  lane('search'),
-  makeNode('ingress', 'ingress', -90, rowY('security')),
-  makeNode('injection', 'injection', COL[0], rowY('security')),
-  makeNode('jailbreak', 'jailbreak', COL[1], rowY('security')),
-  makeNode('pii', 'pii', COL[2], rowY('security')),
-  makeNode('block', 'block', COL[3], rowY('security')),
-  makeNode('exactCache', 'exactCache', COL[0], rowY('efficiency')),
-  makeNode('semanticCache', 'semanticCache', COL[1], rowY('efficiency')),
-  makeNode('compressor', 'compressor', COL[2], rowY('efficiency')),
-  makeNode('searchIntent', 'searchIntent', COL[0], rowY('search')),
-  makeNode('serpCache', 'serpCache', COL[1], rowY('search')),
-  makeNode('queryOptimizer', 'queryOptimizer', COL[2], rowY('search')),
-  makeNode('serpApi', 'serpApi', COL[3], rowY('search')),
-  makeNode('llm', 'llm', 1290, rowY('search')),
-  makeNode('response', 'response', 1540, (rowY('efficiency') + rowY('search')) / 2),
-];
-
-export function edgeColor(sourceKind: NodeKind): string {
-  return ACCENT[CATALOG[sourceKind].accent].fg;
+export function edgeColor(sourceKind: NodeKind, handle: 'out' | 'alt' = 'out'): string {
+  return handle === 'alt' && CATALOG[sourceKind].pillar === 'security' ? ACCENT.red.fg : ACCENT[CATALOG[sourceKind].accent].fg;
 }
 
-function e(source: NodeKind, target: NodeKind, handle: 'out' | 'alt' = 'out', label?: string): PacketEdge {
-  const color = handle === 'alt' && CATALOG[source].pillar === 'security' ? ACCENT.red.fg : edgeColor(source);
+/** Visual edge for a source node/handle. Branch (alt) edges carry their output's label. */
+export function makeEdge(id: string, source: string, sourceKind: NodeKind, target: string, handle: 'out' | 'alt'): PacketEdge {
   return {
-    id: `${source}->${target}`,
+    id,
     source,
     target,
     sourceHandle: handle,
     targetHandle: 'in',
     type: 'packet',
-    data: { color, label },
+    data: { color: edgeColor(sourceKind, handle), label: handle === 'alt' ? CATALOG[sourceKind].outputs.alt : undefined },
   };
 }
 
-export const initialEdges: PacketEdge[] = [
-  e('ingress', 'injection'),
-  e('injection', 'jailbreak'),
-  e('injection', 'block', 'alt', 'threat'),
-  e('jailbreak', 'pii'),
-  e('jailbreak', 'block', 'alt', 'threat'),
-  e('pii', 'exactCache'),
-  e('exactCache', 'semanticCache'),
-  e('exactCache', 'response', 'alt', 'hit'),
-  e('semanticCache', 'compressor'),
-  e('semanticCache', 'response', 'alt', 'hit'),
-  e('compressor', 'searchIntent'),
-  e('searchIntent', 'serpCache'),
-  e('searchIntent', 'llm', 'alt', 'no search'),
-  e('serpCache', 'queryOptimizer'),
-  e('serpCache', 'llm', 'alt', 'hit'),
-  e('queryOptimizer', 'serpApi'),
-  e('serpApi', 'llm'),
-  e('llm', 'response'),
+// ---- Default pipeline -----------------------------------------------------------------------
+
+const COL = [210, 460, 710, 960];
+const DEFAULT_LAYOUT: [NodeKind, number, number][] = [
+  ['ingress', -90, rowY('security')],
+  ['injection', COL[0], rowY('security')],
+  ['jailbreak', COL[1], rowY('security')],
+  ['pii', COL[2], rowY('security')],
+  ['block', COL[3], rowY('security')],
+  ['exactCache', COL[0], rowY('efficiency')],
+  ['semanticCache', COL[1], rowY('efficiency')],
+  ['compressor', COL[2], rowY('efficiency')],
+  ['searchIntent', COL[0], rowY('search')],
+  ['serpCache', COL[1], rowY('search')],
+  ['queryOptimizer', COL[2], rowY('search')],
+  ['serpApi', COL[3], rowY('search')],
+  ['llm', 1290, rowY('search')],
+  ['response', 1540, (rowY('efficiency') + rowY('search')) / 2],
 ];
+
+const DEFAULT_EDGES: [NodeKind, NodeKind, ('out' | 'alt')?][] = [
+  ['ingress', 'injection'],
+  ['injection', 'jailbreak'],
+  ['injection', 'block', 'alt'],
+  ['jailbreak', 'pii'],
+  ['jailbreak', 'block', 'alt'],
+  ['pii', 'exactCache'],
+  ['exactCache', 'semanticCache'],
+  ['exactCache', 'response', 'alt'],
+  ['semanticCache', 'compressor'],
+  ['semanticCache', 'response', 'alt'],
+  ['compressor', 'searchIntent'],
+  ['searchIntent', 'serpCache'],
+  ['searchIntent', 'llm', 'alt'],
+  ['serpCache', 'queryOptimizer'],
+  ['serpCache', 'llm', 'alt'],
+  ['queryOptimizer', 'serpApi'],
+  ['serpApi', 'llm'],
+  ['llm', 'response'],
+];
+
+export function defaultPipelineDoc(id: string): PipelineDoc {
+  return {
+    id,
+    name: id,
+    deployedVersion: 14,
+    hasDraft: false,
+    updatedAt: new Date().toISOString(),
+    nodes: DEFAULT_LAYOUT.map(([kind, x, y]) => ({ id: kind, kind, label: CATALOG[kind].label, position: { x, y }, enabled: true, config: { ...CATALOG[kind].defaults } })),
+    edges: DEFAULT_EDGES.map(([s, t, h = 'out']) => ({ id: `${s}->${t}`, source: s, target: t, sourceHandle: h })),
+  };
+}
+
+// ---- Doc <-> React Flow ---------------------------------------------------------------------
+
+export function docToFlow(doc: PipelineDoc): { nodes: AppNode[]; edges: PacketEdge[] } {
+  const kindOf = new Map(doc.nodes.map((n) => [n.id, n.kind]));
+  const nodes: AppNode[] = [
+    ...LANES,
+    ...doc.nodes.map((n) => {
+      const node = makeNode(n.kind, n.id, n.position.x, n.position.y);
+      node.data = { kind: n.kind, label: n.label, enabled: n.enabled, config: { ...CATALOG[n.kind].defaults, ...n.config } };
+      return node;
+    }),
+  ];
+  const edges = doc.edges.filter((e) => kindOf.has(e.source) && kindOf.has(e.target)).map((e) => makeEdge(e.id, e.source, kindOf.get(e.source)!, e.target, e.sourceHandle));
+  return { nodes, edges };
+}
+
+export function flowToDoc(nodes: AppNode[], edges: PacketEdge[], base: PipelineDoc): PipelineDoc {
+  const ns: PipelineNodeDTO[] = [];
+  for (const n of nodes) {
+    if (n.type !== 'pipeline') continue;
+    ns.push({ id: n.id, kind: n.data.kind, label: n.data.label, position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }, enabled: n.data.enabled, config: n.data.config });
+  }
+  const es: PipelineEdgeDTO[] = edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle === 'alt' ? 'alt' : 'out' }));
+  return { ...base, nodes: ns, edges: es };
+}
+
+/** Stable string of the parts of a doc that matter for saving (ignores timestamps/flags). */
+export function docSignature(doc: Pick<PipelineDoc, 'nodes' | 'edges'>): string {
+  return JSON.stringify([doc.nodes, doc.edges]);
+}

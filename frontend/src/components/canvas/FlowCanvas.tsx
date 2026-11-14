@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react';
 import { useCallback, type Dispatch, type DragEvent, type SetStateAction } from 'react';
 import { CATALOG } from '../../lib/catalog';
-import { edgeColor, NODE_H, NODE_W } from '../../lib/pipeline';
+import { makeEdge, NODE_H, NODE_W } from '../../lib/pipeline';
 import type { AppNode, NodeKind, PacketEdge } from '../../types';
 import { LaneNodeView } from './LaneNodeView';
 import { PacketEdgeView } from './PacketEdgeView';
@@ -38,7 +38,7 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdge
     (c: Connection) => {
       const src = nodes.find((n) => n.id === c.source);
       const kind = src?.type === 'pipeline' ? src.data.kind : 'llm';
-      setEdges((eds) => addEdge<PacketEdge>({ ...c, id: `${c.source}->${c.target}`, type: 'packet', data: { color: edgeColor(kind) } }, eds));
+      setEdges((eds) => addEdge<PacketEdge>({ ...makeEdge(`${c.source}->${c.target}`, c.source, kind, c.target, c.sourceHandle === 'alt' ? 'alt' : 'out'), targetHandle: c.targetHandle }, eds));
     },
     [nodes, setEdges],
   );
