@@ -25,8 +25,8 @@ export function StatsPill({ summary, traces }: { summary: Summary | undefined; t
     <div className={clsx(pill, 'absolute left-4 top-4 z-10 hidden items-center divide-x divide-border md:flex')}>
       {items.map((i) => (
         <div key={i.k} className="flex items-baseline gap-1.5 px-3.5 py-2">
-          <span className="text-[13px] font-medium tabular-nums text-fg">{i.v}</span>
-          <span className="text-[11px] text-fg-subtle">{i.k}</span>
+          <span className="text-[13px] font-medium tabular-nums text-foreground">{i.v}</span>
+          <span className="text-xs text-muted-foreground">{i.k}</span>
         </div>
       ))}
     </div>
@@ -36,7 +36,7 @@ export function StatsPill({ summary, traces }: { summary: Summary | undefined; t
 /** Bottom-center: zoom + run controls. */
 export function CanvasToolbar({ onTest, onAttack }: { onTest: () => void; onAttack: () => void }) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const btn = 'grid h-8 w-8 place-items-center rounded-lg text-fg-muted hover:bg-white/5 hover:text-fg';
+  const btn = 'grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-white/5 hover:text-foreground';
   return (
     <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
       <div className={clsx(pill, 'flex items-center p-1')}>
@@ -53,7 +53,7 @@ export function CanvasToolbar({ onTest, onAttack }: { onTest: () => void; onAtta
       <button onClick={onTest} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-medium text-background shadow-lg shadow-black/40 hover:bg-primary/90">
         <Play size={14} fill="currentColor" /> Test request
       </button>
-      <button onClick={onAttack} className={clsx(pill, 'grid h-10 w-10 place-items-center text-fg-muted hover:text-danger')} title="Simulate an attack" aria-label="Simulate an attack">
+      <button onClick={onAttack} className={clsx(pill, 'grid h-10 w-10 place-items-center text-muted-foreground hover:text-danger')} title="Simulate an attack" aria-label="Simulate an attack">
         <Bug size={15} />
       </button>
     </div>
@@ -70,7 +70,7 @@ export function NodeDrawer({ onAdd }: { onAdd: (kind: NodeKind) => void }) {
     <>
       <button
         onClick={() => setOpen((o) => !o)}
-        className={clsx(pill, 'absolute right-4 top-4 z-20 grid h-10 w-10 place-items-center text-fg-muted transition-colors hover:text-fg', open && 'text-fg')}
+        className={clsx(pill, 'absolute right-4 top-4 z-20 grid h-10 w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground', open && 'text-foreground')}
         aria-label={open ? 'Close node list' : 'Add node'}
         title="Add node"
       >
@@ -79,13 +79,13 @@ export function NodeDrawer({ onAdd }: { onAdd: (kind: NodeKind) => void }) {
       {open && (
         <div className={clsx(pill, 'absolute right-4 top-16 z-20 flex max-h-[calc(100%-6rem)] w-72 flex-col overflow-hidden bg-popover shadow-2xl shadow-black/60')}>
           <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-            <Search size={14} className="text-fg-subtle" />
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search nodes…" className="w-full bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-subtle" />
+            <Search size={14} className="text-muted-foreground" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search nodes…" className="w-full bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground" />
           </div>
           <div className="overflow-y-auto p-1.5">
             {groups.map((g) => (
               <div key={g.pillar} className="mb-1">
-                <div className="px-2 pb-1 pt-2 text-[11px] text-fg-subtle">{PILLAR[g.pillar].label}</div>
+                <div className="px-2 pb-1 pt-2 text-xs text-muted-foreground">{PILLAR[g.pillar].label}</div>
                 {g.kinds.map((k) => {
                   const c = CATALOG[k];
                   const Icon = c.icon;
@@ -108,15 +108,15 @@ export function NodeDrawer({ onAdd }: { onAdd: (kind: NodeKind) => void }) {
                         <Icon size={14} />
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-[12.5px] text-fg">{c.label}</span>
-                        <span className="line-clamp-2 block text-[11px] leading-snug text-fg-subtle">{c.description}</span>
+                        <span className="block text-sm text-foreground">{c.label}</span>
+                        <span className="line-clamp-2 block text-xs leading-snug text-muted-foreground">{c.description}</span>
                       </span>
                     </button>
                   );
                 })}
               </div>
             ))}
-            {groups.length === 0 && <div className="px-2 py-6 text-center text-[12px] text-fg-subtle">No matching nodes</div>}
+            {groups.length === 0 && <div className="px-2 py-6 text-center text-[13px] text-muted-foreground">No matching nodes</div>}
           </div>
         </div>
       )}

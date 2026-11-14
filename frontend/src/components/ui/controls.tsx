@@ -34,7 +34,7 @@ export function Segmented({ value, options, onChange }: { value: string; options
   return (
     <ToggleGroup type="single" value={value} onValueChange={(v) => v && onChange(v)} className="grid auto-cols-fr grid-flow-col gap-0.5 rounded-md border bg-muted/40 p-0.5" size="sm">
       {options.map((o) => (
-        <ToggleGroupItem key={o} value={o} className="h-7 font-mono text-[11px] text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
+        <ToggleGroupItem key={o} value={o} className="h-7 font-mono text-xs text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
           {o}
         </ToggleGroupItem>
       ))}
@@ -43,7 +43,7 @@ export function Segmented({ value, options, onChange }: { value: string; options
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded border border-input bg-muted/50 px-1 font-mono text-2xs text-fg-muted">{children}</kbd>;
+  return <kbd className="rounded border border-input bg-muted/50 px-1 font-mono text-xs text-muted-foreground">{children}</kbd>;
 }
 
 export function Sparkline({ data, color, height = 28, fill = true }: { data: number[]; color: string; height?: number; fill?: boolean }) {

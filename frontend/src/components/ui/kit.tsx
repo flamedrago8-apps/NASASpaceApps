@@ -2,16 +2,19 @@
  * App-level building blocks composed from shadcn/ui primitives (./button, ./card, ./dialog, …).
  * Pages import from here so they share one look; add new primitives with `npx shadcn add`.
  */
-import { Check, Copy, FlaskConical, LoaderCircle, RotateCw } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { Check, Copy, FlaskConical, LoaderCircle, RotateCw, Search } from 'lucide-react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { mockControls } from '../../api';
 import { cn } from '@/lib/utils';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from './breadcrumb';
 import { Button as UIButton, type ButtonProps as UIButtonProps } from './button';
-import { Card as UICard, CardContent, CardHeader, CardTitle } from './card';
+import { Card as UICard, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from './card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
 import { Input } from './input';
 import { Label } from './label';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { Separator } from './separator';
+import { SidebarTrigger } from './sidebar';
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip';
 
@@ -65,15 +68,35 @@ export function CopyButton({ text, label = 'Copy' }: { text: string; label?: str
 
 // ---- Layout -----------------------------------------------------------------------------------
 
+/** Lets any page header open the ⌘K command palette. */
+export const CommandOpenContext = createContext<() => void>(() => {});
+
+/** shadcn dashboard-01 site header: sidebar trigger · breadcrumb · actions. */
 export function PageHeader({ title, subtitle, actions, children }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
+  const openCommand = useContext(CommandOpenContext);
   return (
-    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2 sm:px-6">
-      <div className="flex min-w-0 items-baseline gap-2">
-        <h1 className="truncate text-sm font-semibold tracking-tight">{title}</h1>
-        {subtitle && <span className="truncate text-xs text-muted-foreground">{subtitle}</span>}
-      </div>
+    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2 lg:px-6">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="mx-1 h-4" />
+      <Breadcrumb className="min-w-0">
+        <BreadcrumbList className="flex-nowrap">
+          <BreadcrumbItem className="hidden sm:inline-flex">
+            <BreadcrumbLink href="#/demo">Conduit</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden sm:block" />
+          <BreadcrumbItem className="min-w-0">
+            <BreadcrumbPage className="truncate font-medium">{title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      {subtitle && <span className="hidden truncate text-sm text-muted-foreground lg:inline">· {subtitle}</span>}
       {children}
       <div className="ml-auto flex items-center gap-2">
+        <UIButton variant="outline" size="sm" onClick={openCommand} className="hidden h-8 w-48 justify-start gap-2 px-3 font-normal text-muted-foreground shadow-none 2xl:flex">
+          <Search className="size-3.5" />
+          Search…
+          <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">⌘K</kbd>
+        </UIButton>
         <DemoBadge />
         {actions}
       </div>
@@ -81,16 +104,17 @@ export function PageHeader({ title, subtitle, actions, children }: { title: Reac
   );
 }
 
-export function Card({ title, actions, children, className, bodyClassName }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string }) {
+export function Card({ title, description, actions, children, className, bodyClassName }: { title?: ReactNode; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string }) {
   return (
-    <UICard className={cn('min-w-0 shadow-none', className)}>
+    <UICard className={cn('min-w-0', className)}>
       {(title || actions) && (
-        <CardHeader className="flex-row items-center space-y-0 px-5 pb-2 pt-4">
-          {title && <CardTitle className="text-sm font-medium">{title}</CardTitle>}
-          <div className="ml-auto flex items-center gap-1">{actions}</div>
+        <CardHeader className="px-6 pb-3 pt-5">
+          {title && <CardTitle className="text-base font-semibold">{title}</CardTitle>}
+          {description && <CardDescription>{description}</CardDescription>}
+          {actions && <CardAction className="flex items-center gap-1">{actions}</CardAction>}
         </CardHeader>
       )}
-      <CardContent className={cn('p-5', title && 'pt-2', bodyClassName)}>{children}</CardContent>
+      <CardContent className={cn('px-6 pb-6', !title && 'pt-6', bodyClassName)}>{children}</CardContent>
     </UICard>
   );
 }
@@ -174,7 +198,7 @@ export function TextInput({ label, hint, suffix, className, id, ...rest }: React
         <Input id={inputId} {...rest} className={cn('h-8 text-[13px]', suffix && 'pr-20')} />
         {suffix && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{suffix}</span>}
       </div>
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -196,7 +220,7 @@ export function DemoBadge() {
         <p className="mb-3 leading-relaxed">
           No backend is connected. Requests run through the real pipeline engine in your browser, with simulated models and search. Set <code className="text-foreground">VITE_API_URL</code> to connect a gateway.
         </p>
-        <div className="mb-1.5 text-[11px]">Simulated background traffic</div>
+        <div className="mb-1.5 text-xs">Simulated background traffic</div>
         <Segmented
           label="Simulated traffic rate"
           value={String(rate) as '1' | '2' | '5'}

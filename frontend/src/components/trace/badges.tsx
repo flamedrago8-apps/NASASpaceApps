@@ -12,7 +12,7 @@ const STATUS: Record<TraceStatus, { label: string; color: string; bg: string }> 
 export function StatusBadge({ status }: { status: TraceStatus }) {
   const s = STATUS[status];
   return (
-    <span className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] font-medium" style={{ color: s.color, background: s.bg }}>
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: status === 'ok' ? '#34D399' : s.color }} />
       {s.label}
     </span>

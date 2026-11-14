@@ -107,7 +107,7 @@ export function SettingsPage() {
             <Section title="Gateway">
               <Row label="Base URL" hint="Point OpenAI-compatible clients here.">
                 <div className="flex items-center gap-1 rounded-lg bg-muted py-0.5 pl-2.5 pr-0.5">
-                  <code className="max-w-[260px] truncate font-mono text-[12px] text-fg-muted">{s.gateway.baseUrl}</code>
+                  <code className="max-w-[260px] truncate font-mono text-[13px] text-muted-foreground">{s.gateway.baseUrl}</code>
                   <CopyButton text={s.gateway.baseUrl} label="Copy base URL" />
                 </div>
               </Row>
@@ -129,7 +129,7 @@ export function SettingsPage() {
       {dirty && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
           <div className="pointer-events-auto flex animate-toast-in items-center gap-3 rounded-xl border border-input bg-popover py-2 pl-4 pr-2 shadow-2xl shadow-black/60">
-            <span className="text-[12.5px] text-fg-muted">Unsaved changes</span>
+            <span className="text-sm text-muted-foreground">Unsaved changes</span>
             <Button
               variant="ghost"
               size="sm"
@@ -154,8 +154,8 @@ function Section({ title, body, children }: { title: string; body?: string; chil
   return (
     <section className="grid gap-3 md:grid-cols-[220px_1fr] md:gap-8">
       <div>
-        <h2 className="text-[13px] font-medium text-fg">{title}</h2>
-        {body && <p className="mt-1 text-[12px] leading-relaxed text-fg-subtle">{body}</p>}
+        <h2 className="text-[13px] font-medium text-foreground">{title}</h2>
+        {body && <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{body}</p>}
       </div>
       <div className="divide-y rounded-xl border bg-card">{children}</div>
     </section>
@@ -166,8 +166,8 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   return (
     <div className="flex items-center gap-4 px-4 py-3.5">
       <div className="min-w-0 flex-1">
-        <div className="text-[12.5px] text-fg">{label}</div>
-        {hint && <div className="mt-0.5 text-[11.5px] leading-snug text-fg-subtle">{hint}</div>}
+        <div className="text-sm text-foreground">{label}</div>
+        {hint && <div className="mt-0.5 text-xs leading-snug text-muted-foreground">{hint}</div>}
       </div>
       {children}
     </div>
@@ -180,12 +180,12 @@ function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: 
     <div className="px-4 py-3.5">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-[12.5px] text-fg">{name}</div>
-          <div className="mt-0.5 text-[11.5px] text-fg-subtle">{hint}</div>
+          <div className="text-sm text-foreground">{name}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>
         </div>
-        {!editing && state.source === 'env' && <span className="rounded bg-muted px-1.5 py-0.5 text-[10.5px] text-fg-subtle">from env</span>}
+        {!editing && state.source === 'env' && <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">from env</span>}
         {!editing && (
-          <span className={clsx('flex items-center gap-1.5 text-[12px]', state.configured ? 'text-fg-muted' : 'text-fg-subtle')}>
+          <span className={clsx('flex items-center gap-1.5 text-[13px]', state.configured ? 'text-muted-foreground' : 'text-muted-foreground')}>
             <span className={clsx('h-1.5 w-1.5 rounded-full', state.configured ? 'bg-efficiency' : 'bg-[#3a3a44]')} />
             {state.configured ? <span className="font-mono">••••{state.last4}</span> : 'Not set'}
           </span>
@@ -200,7 +200,7 @@ function SecretRow({ name, hint, placeholder, state, value, onChange }: { name: 
           </Button>
         )}
       </div>
-      {editing && value === REMOVE && <div className="mt-2 text-[11.5px] text-danger">This key will be removed when you save.</div>}
+      {editing && value === REMOVE && <div className="mt-2 text-xs text-danger">This key will be removed when you save.</div>}
       {editing && value !== REMOVE && (
         <div className="mt-3 flex items-center gap-2">
           <TextInput className="flex-1" type="password" autoComplete="off" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-label={`${name} API key`} />

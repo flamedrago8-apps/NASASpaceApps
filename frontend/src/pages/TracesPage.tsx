@@ -58,7 +58,7 @@ export function TracesPage({ route }: { route: Route }) {
         subtitle={`${all.length.toLocaleString()} loaded`}
         actions={
           <>
-            <button onClick={() => setLive(!live)} className="flex items-center gap-2 px-1 text-[12px] text-fg-muted hover:text-fg" aria-pressed={live}>
+            <button onClick={() => setLive(!live)} className="flex items-center gap-2 px-1 text-[13px] text-muted-foreground hover:text-foreground" aria-pressed={live}>
               <span className={clsx('h-1.5 w-1.5 rounded-full', live ? 'animate-blink bg-efficiency' : 'bg-fg-subtle')} />
               {live ? 'Live' : 'Paused'}
             </button>
@@ -79,7 +79,7 @@ export function TracesPage({ route }: { route: Route }) {
           footer={
             <div className="flex justify-center py-4">
               {exhausted ? (
-                <span className="text-[12px] text-fg-subtle">No older traces</span>
+                <span className="text-[13px] text-muted-foreground">No older traces</span>
               ) : (
                 <Button size="sm" variant="ghost" loading={loading} onClick={loadOlder}>
                   Load older traces

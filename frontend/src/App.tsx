@@ -1,9 +1,11 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { Component, type ReactNode } from 'react';
-import { Sidebar } from './components/layout/Sidebar';
-import { TooltipProvider } from './components/ui/tooltip';
-import { Button, EmptyState } from './components/ui/kit';
+import { Component, useState, type ReactNode } from 'react';
+import { AppSidebar } from './components/layout/AppSidebar';
+import { CommandMenu } from './components/layout/CommandMenu';
 import { ProfileProvider } from './components/ProfileSlider';
+import { Button, CommandOpenContext, EmptyState } from './components/ui/kit';
+import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
+import { TooltipProvider } from './components/ui/tooltip';
 import { DemoPage } from './pages/DemoPage';
 import { KeysPage } from './pages/KeysPage';
 import { OverviewPage } from './pages/OverviewPage';
@@ -16,6 +18,7 @@ import { TraceProvider } from './state/traces';
 
 export default function App() {
   const route = useRoute();
+  const [cmdOpen, setCmdOpen] = useState(false);
   let page: ReactNode;
   switch (route.path) {
     case '/demo':
@@ -44,16 +47,22 @@ export default function App() {
     <ToastProvider>
       <TraceProvider>
         <ProfileProvider>
-        <TooltipProvider delayDuration={200}>
-        <ReactFlowProvider>
-          <div className="flex h-[100dvh] w-full overflow-hidden bg-canvas text-fg">
-            <Sidebar path={route.path} />
-            <main className="min-w-0 flex-1">
-              <ErrorBoundary key={route.path}>{page}</ErrorBoundary>
-            </main>
-          </div>
-        </ReactFlowProvider>
-        </TooltipProvider>
+          <TooltipProvider delayDuration={200}>
+            <ReactFlowProvider>
+              <CommandOpenContext.Provider value={() => setCmdOpen(true)}>
+                {/* shadcn dashboard-01 layout: inset sidebar + content panel */}
+                <SidebarProvider>
+                  <AppSidebar path={route.path} onOpenCommand={() => setCmdOpen(true)} />
+                  <SidebarInset className="h-svh md:h-[calc(100svh-1rem)]">
+                    <ErrorBoundary key={route.path}>
+                      <div className="flex min-h-0 flex-1 flex-col">{page}</div>
+                    </ErrorBoundary>
+                  </SidebarInset>
+                </SidebarProvider>
+                <CommandMenu open={cmdOpen} setOpen={setCmdOpen} />
+              </CommandOpenContext.Provider>
+            </ReactFlowProvider>
+          </TooltipProvider>
         </ProfileProvider>
       </TraceProvider>
     </ToastProvider>

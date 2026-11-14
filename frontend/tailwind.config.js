@@ -23,6 +23,17 @@ export default {
         accent: { DEFAULT: v('accent'), foreground: v('accent-foreground') },
         popover: { DEFAULT: v('popover'), foreground: v('popover-foreground') },
         card: { DEFAULT: v('card'), foreground: v('card-foreground') },
+        chart: { 1: v('chart-1'), 2: v('chart-2'), 3: v('chart-3'), 4: v('chart-4'), 5: v('chart-5') },
+        sidebar: {
+          DEFAULT: v('sidebar-background'),
+          foreground: v('sidebar-foreground'),
+          primary: v('sidebar-primary'),
+          'primary-foreground': v('sidebar-primary-foreground'),
+          accent: v('sidebar-accent'),
+          'accent-foreground': v('sidebar-accent-foreground'),
+          border: v('sidebar-border'),
+          ring: v('sidebar-ring'),
+        },
 
         // Legacy names used across the app, mapped onto the shadcn tokens.
         canvas: v('background'),

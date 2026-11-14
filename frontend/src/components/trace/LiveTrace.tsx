@@ -66,10 +66,10 @@ export function LiveTrace({ traces, variant = 'drawer', expanded = true, onToggl
     <div className="flex h-full min-h-0 flex-col bg-canvas">
       <div className="flex h-11 shrink-0 items-center gap-3 px-4">
         {!isPage && (
-          <button onClick={onToggleExpanded} className="flex items-center gap-2 text-[13px] font-medium text-fg" aria-expanded={expanded}>
-            <ChevronUp size={15} className={clsx('text-fg-subtle transition-transform', expanded && 'rotate-180')} />
+          <button onClick={onToggleExpanded} className="flex items-center gap-2 text-[13px] font-medium text-foreground" aria-expanded={expanded}>
+            <ChevronUp size={15} className={clsx('text-muted-foreground transition-transform', expanded && 'rotate-180')} />
             Logs
-            <span className="text-[12px] font-normal tabular-nums text-fg-subtle">{traces.length}</span>
+            <span className="text-[13px] font-normal tabular-nums text-muted-foreground">{traces.length}</span>
           </button>
         )}
 
@@ -79,7 +79,7 @@ export function LiveTrace({ traces, variant = 'drawer', expanded = true, onToggl
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id)}
-                className={clsx('whitespace-nowrap rounded-lg px-2.5 py-1 text-[12px] transition-colors', filter === f.id ? 'bg-accent text-fg' : 'text-fg-subtle hover:text-fg-muted')}
+                className={clsx('whitespace-nowrap rounded-lg px-2.5 py-1 text-[13px] transition-colors', filter === f.id ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-muted-foreground')}
               >
                 {f.label}
                 <span className="ml-1.5 tabular-nums opacity-60">{counts[f.id] ?? 0}</span>
@@ -88,7 +88,7 @@ export function LiveTrace({ traces, variant = 'drawer', expanded = true, onToggl
           </div>
         ) : (
           last && (
-            <button onClick={onToggleExpanded} className="flex min-w-0 items-center gap-3 text-[12px] text-fg-subtle hover:text-fg-muted">
+            <button onClick={onToggleExpanded} className="flex min-w-0 items-center gap-3 text-[13px] text-muted-foreground hover:text-muted-foreground">
               <StatusBadge status={last.status} />
               <span className="truncate">{last.prompt}</span>
               <span className="shrink-0 tabular-nums">{fmtMs(last.latency)}</span>
@@ -111,7 +111,7 @@ export function LiveTrace({ traces, variant = 'drawer', expanded = true, onToggl
       {expanded && (
         <div className="min-h-0 flex-1 overflow-auto">
           <div className="min-w-[960px]">
-            <div className={clsx(COLS, 'sticky top-0 z-10 bg-canvas px-4 pb-1.5 pt-1 text-[11px] text-fg-subtle')}>
+            <div className={clsx(COLS, 'sticky top-0 z-10 bg-canvas px-4 pb-1.5 pt-1 text-xs text-muted-foreground')}>
               <span />
               <span>Time</span>
               <span>Prompt</span>
@@ -133,7 +133,7 @@ export function LiveTrace({ traces, variant = 'drawer', expanded = true, onToggl
             {rows.map((t) => (
               <TraceRow key={t.id} t={t} open={open === t.id} onToggle={() => setOpen((o) => (o === t.id ? null : t.id))} onHover={onHover} onSelectNode={onSelectNode} />
             ))}
-            {rows.length === 0 && <div className="px-4 py-10 text-center text-[12px] text-fg-subtle">{traces.length ? 'No requests match.' : 'Waiting for traffic…'}</div>}
+            {rows.length === 0 && <div className="px-4 py-10 text-center text-[13px] text-muted-foreground">{traces.length ? 'No requests match.' : 'Waiting for traffic…'}</div>}
             {footer}
           </div>
         </div>
@@ -152,9 +152,9 @@ const TraceRow = memo(function TraceRow({ t, open, onToggle, onHover, onSelectNo
   return (
     <div className={clsx('animate-row-in', open && 'bg-muted/50')} onMouseEnter={() => onHover?.(t)} onMouseLeave={() => onHover?.(null)}>
       <button onClick={onToggle} className={clsx(COLS, 'w-full px-4 py-[7px] text-left hover:bg-muted/50')}>
-        <ChevronRight size={13} className={clsx('text-fg-subtle transition-transform', open && 'rotate-90')} />
-        <span className="text-[12px] tabular-nums text-fg-subtle">{fmtTime(t.ts).slice(0, 8)}</span>
-        <span className="truncate text-[12.5px] text-fg-muted" title={`${t.app} · ${t.prompt}`}>
+        <ChevronRight size={13} className={clsx('text-muted-foreground transition-transform', open && 'rotate-90')} />
+        <span className="text-[13px] tabular-nums text-muted-foreground">{fmtTime(t.ts).slice(0, 8)}</span>
+        <span className="truncate text-sm text-muted-foreground" title={`${t.app} · ${t.prompt}`}>
           {t.prompt}
         </span>
         <span className="flex items-center gap-1">
@@ -162,14 +162,14 @@ const TraceRow = memo(function TraceRow({ t, open, onToggle, onHover, onSelectNo
           {t.leakedThreat && <TriangleAlert size={13} className="text-security-amber" aria-label="Attack not detected" />}
         </span>
         <Waterfall spans={visible} scale={SCALE_MS} />
-        <span className="text-right text-[12px] tabular-nums text-fg">{fmtMs(t.latency)}</span>
-        <span className="text-right text-[12px] tabular-nums text-fg-subtle">
-          {t.status === 'blocked' ? '—' : t.status === 'cache_hit' ? <span className="text-efficiency">0 sent</span> : <>{fmtK(t.tokensIn)} → <span className="text-fg">{fmtK(t.tokensSent)}</span></>}
+        <span className="text-right text-[13px] tabular-nums text-foreground">{fmtMs(t.latency)}</span>
+        <span className="text-right text-[13px] tabular-nums text-muted-foreground">
+          {t.status === 'blocked' ? '—' : t.status === 'cache_hit' ? <span className="text-efficiency">0 sent</span> : <>{fmtK(t.tokensIn)} → <span className="text-foreground">{fmtK(t.tokensSent)}</span></>}
         </span>
-        <span className="text-right text-[12px] tabular-nums text-fg-subtle">
-          {t.searchRaw === 0 || t.status === 'blocked' ? '—' : <>{t.searchRaw} → <span className={t.searchSent < t.searchRaw ? 'text-serp' : 'text-fg'}>{t.searchSent}</span></>}
+        <span className="text-right text-[13px] tabular-nums text-muted-foreground">
+          {t.searchRaw === 0 || t.status === 'blocked' ? '—' : <>{t.searchRaw} → <span className={t.searchSent < t.searchRaw ? 'text-serp' : 'text-foreground'}>{t.searchSent}</span></>}
         </span>
-        <span className={clsx('text-right text-[12px] tabular-nums', t.saved > 0.00005 ? 'text-efficiency' : 'text-fg-subtle')}>
+        <span className={clsx('text-right text-[13px] tabular-nums', t.saved > 0.00005 ? 'text-efficiency' : 'text-muted-foreground')}>
           {t.status === 'blocked' ? <span className="text-danger/80">threat</span> : t.saved > 0.00005 ? `+${fmtUsd(t.saved)}` : '—'}
         </span>
       </button>
@@ -205,7 +205,7 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string
   return (
     <div className="grid gap-4 px-4 pb-4 pt-1 lg:grid-cols-[1fr_320px]">
       <div className="overflow-hidden rounded-xl border border-border">
-        <div className="grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] gap-x-3 border-b border-border bg-muted/50 px-3 py-1.5 text-[11px] text-fg-subtle">
+        <div className="grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] gap-x-3 border-b border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
           <span>Step</span>
           <span>Outcome</span>
           <span>Detail</span>
@@ -219,20 +219,20 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string
           const color = spanColor(s);
           return (
             <div key={i} className={clsx('grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] items-center gap-x-3 border-b border-border px-3 py-1.5 last:border-0', s.outcome === 'bypassed' && 'opacity-45')}>
-              <button onClick={() => onSelectNode?.(s.nodeId)} className="flex min-w-0 items-center gap-2 text-left text-[12px] text-fg-muted hover:text-fg">
-                <span className="font-mono text-2xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
+              <button onClick={() => onSelectNode?.(s.nodeId)} className="flex min-w-0 items-center gap-2 text-left text-[13px] text-muted-foreground hover:text-foreground">
+                <span className="font-mono text-xs text-muted-foreground">{String(i + 1).padStart(2, '0')}</span>
                 <Icon size={13} style={{ color }} />
                 <span className="truncate">{s.name}</span>
               </button>
               <OutcomeBadge outcome={s.outcome} />
               <div className="min-w-0">
-                <div className="truncate font-mono text-[11px] text-fg-muted" title={s.detail}>
+                <div className="truncate font-mono text-xs text-muted-foreground" title={s.detail}>
                   {s.detail}
                 </div>
                 {s.meta && (
                   <div className="mt-0.5 flex flex-wrap gap-1">
                     {s.meta.map((m, j) => (
-                      <span key={j} className={clsx('rounded px-1 font-mono text-2xs', m.startsWith('−') ? 'text-fg-subtle line-through decoration-fg-subtle/60' : 'bg-serp/10 text-serp')}>
+                      <span key={j} className={clsx('rounded px-1 font-mono text-xs', m.startsWith('−') ? 'text-muted-foreground line-through decoration-fg-subtle/60' : 'bg-serp/10 text-serp')}>
                         {m.replace(/^[−+] /, '')}
                       </span>
                     ))}
@@ -242,8 +242,8 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string
               <div className="relative h-2.5 rounded-sm bg-muted/50">
                 <span className="absolute inset-y-0 rounded-sm" style={{ left: `${(s.start / total) * 100}%`, width: `max(2px, ${(s.duration / total) * 100}%)`, background: color, opacity: s.outcome === 'bypassed' ? 0.3 : 0.9 }} />
               </div>
-              <span className="text-right text-[12px] tabular-nums text-fg-subtle">{s.outcome === 'bypassed' ? '—' : fmtMs(s.duration)}</span>
-              <span className={clsx('text-right font-mono text-[11px] tabular-nums', s.saved > 0.00005 ? 'text-efficiency' : 'text-fg-subtle')}>{s.saved > 0.00005 ? `+${fmtUsd(s.saved)}` : '—'}</span>
+              <span className="text-right text-[13px] tabular-nums text-muted-foreground">{s.outcome === 'bypassed' ? '—' : fmtMs(s.duration)}</span>
+              <span className={clsx('text-right font-mono text-xs tabular-nums', s.saved > 0.00005 ? 'text-efficiency' : 'text-muted-foreground')}>{s.saved > 0.00005 ? `+${fmtUsd(s.saved)}` : '—'}</span>
             </div>
           );
         })}
@@ -251,8 +251,8 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string
 
       <div className="space-y-3">
         <div className="rounded-xl border border-border bg-muted/50 p-3">
-          <div className="mb-2 text-[11px] text-fg-subtle">ROI</div>
-          <dl className="space-y-1.5 font-mono text-[12px]">
+          <div className="mb-2 text-xs text-muted-foreground">ROI</div>
+          <dl className="space-y-1.5 font-mono text-[13px]">
             <Row k="Naive cost" v={t.status === 'blocked' ? '—' : fmtUsd(t.costBaseline)} />
             <Row k="Actual cost" v={t.status === 'blocked' ? '$0 (blocked)' : fmtUsd(t.costActual)} />
             <div className="my-1 border-t border-border" />
@@ -262,8 +262,8 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string
           </dl>
         </div>
         <div className="rounded-xl border border-border bg-muted/50 p-3">
-          <div className="mb-2 text-[11px] text-fg-subtle">Payload</div>
-          <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-fg-muted">
+          <div className="mb-2 text-xs text-muted-foreground">Payload</div>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-muted-foreground">
             {JSON.stringify({ id: t.id, route: t.route, app: t.app, model: t.model, messages: [{ role: 'user', content: t.prompt }], threat: t.threat ?? null }, null, 2)}
           </pre>
         </div>
@@ -275,8 +275,8 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode?: (id: string
 function Row({ k, v, color }: { k: string; v: string; color?: string }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-fg-subtle">{k}</dt>
-      <dd className="text-right tabular-nums text-fg" style={color ? { color } : undefined}>
+      <dt className="text-muted-foreground">{k}</dt>
+      <dd className="text-right tabular-nums text-foreground" style={color ? { color } : undefined}>
         {v}
       </dd>
     </div>

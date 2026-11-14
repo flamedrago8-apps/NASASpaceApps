@@ -1,179 +1,247 @@
-import clsx from 'clsx';
-import { ArrowUpRight, ShieldAlert, Table2, TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
-import { api, type Range } from '../api';
-import { BarList, CHART, ColumnChart, DataTable, LegendKey, LineChart } from '../components/charts/charts';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { api, type Range, type SeriesPoint } from '../api';
 import { StatusBadge } from '../components/trace/badges';
-import { Card, ErrorState, IconButton, PageHeader, Segmented, Spinner } from '../components/ui/kit';
-import { ProfileSlider } from '../components/ProfileSlider';
-import { SavingsCounter } from '../components/SavingsCounter';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '../components/ui/chart';
+import { ErrorState, PageHeader, Spinner } from '../components/ui/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group';
 import { fmtMs, fmtNum, fmtPct, fmtUsd } from '../lib/format';
+import { cn } from '../lib/utils';
 import { navigate } from '../state/router';
 import { useTraces } from '../state/traces';
 import { useAsync } from '../state/useAsync';
 
-const RANGES: { id: Range; label: string }[] = [
-  { id: '1h', label: '1h' },
-  { id: '24h', label: '24h' },
-  { id: '7d', label: '7d' },
-  { id: '30d', label: '30d' },
+const RANGES: { id: Range; long: string }[] = [
+  { id: '1h', long: 'Last hour' },
+  { id: '24h', long: 'Last 24 hours' },
+  { id: '7d', long: 'Last 7 days' },
+  { id: '30d', long: 'Last 30 days' },
 ];
 
-function fmtBucket(range: Range) {
-  return (t: number) => {
-    const d = new Date(t);
-    if (range === '1h' || range === '24h') return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
+const fmtBucket = (range: Range) => (t: number) => {
+  const d = new Date(t);
+  return range === '1h' || range === '24h' ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+/**
+ * Change of a ratio between the first and second half of the window. Using rates (savings rate,
+ * cost per request, threats per 1k) rather than raw totals keeps trends meaningful when volume
+ * swings with the time of day.
+ */
+function trend(pts: SeriesPoint[], num: (p: SeriesPoint) => number, den: (p: SeriesPoint) => number = () => 1) {
+  const h = Math.floor(pts.length / 2);
+  const ratio = (xs: SeriesPoint[]) => xs.reduce((s, p) => s + num(p), 0) / Math.max(1e-9, xs.reduce((s, p) => s + den(p), 0));
+  const a = ratio(pts.slice(0, h));
+  const b = ratio(pts.slice(h));
+  return a > 0 ? (b - a) / a : 0;
 }
 
-const fmtCompactUsd = (v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(v >= 10_000 ? 0 : 1)}k` : v >= 10 ? `$${Math.round(v)}` : `$${v.toFixed(2)}`);
+const spendConfig = {
+  naive: { label: 'Without gateway', color: 'hsl(var(--chart-2))' },
+  actual: { label: 'Actual spend', color: 'hsl(var(--chart-1))' },
+} satisfies ChartConfig;
+
+const reqConfig = { requests: { label: 'Requests', color: 'hsl(var(--chart-2))' }, blocked: { label: 'Threats', color: 'hsl(var(--chart-4))' } } satisfies ChartConfig;
 
 export function OverviewPage() {
   const [range, setRange] = useState<Range>('24h');
   const summary = useAsync(() => api.getSummary(range), [range], 15_000);
   const series = useAsync(() => api.getTimeseries(range), [range], 15_000);
   const { traces } = useTraces();
-  const [tables, setTables] = useState<Record<string, boolean>>({});
-  const toggle = (k: string) => setTables((t) => ({ ...t, [k]: !t[k] }));
 
   const s = summary.data;
   const pts = series.data ?? [];
   const fx = fmtBucket(range);
-  const refetching = summary.loading || series.loading;
-  const threats = traces.filter((t) => t.status === 'blocked' || t.status === 'honeypot' || t.status === 'flagged' || t.leakedThreat).slice(0, 6);
+  const rangeLabel = RANGES.find((r) => r.id === range)!.long;
+  const threats = traces.filter((t) => t.status === 'blocked' || t.status === 'honeypot' || t.leakedThreat).slice(0, 8);
+  const chartData = pts.map((p) => ({ t: p.t, naive: +p.costNaive.toFixed(4), actual: +p.costActual.toFixed(4), requests: p.requests, blocked: p.blocked }));
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PageHeader title="Overview" subtitle="chat-default · production">
-        <Segmented label="Time range" value={range} options={RANGES} onChange={setRange} />
-      </PageHeader>
-
+      <PageHeader title="Overview" />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {summary.error && !s ? (
           <ErrorState error={summary.error} onRetry={summary.reload} />
         ) : !s ? (
           <Spinner label="Loading metrics" />
         ) : (
-          <div className={clsx('mx-auto max-w-[1280px] space-y-4 p-4 transition-opacity sm:p-5', refetching && 'opacity-80')}>
-            <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-              <SavingsCounter compact />
-              <ProfileSlider />
+          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-4">
+              <StatCard
+                label="Money saved"
+                value={fmtUsd(s.saved)}
+                delta={trend(pts, (p) => p.costNaive - p.costActual, (p) => p.costNaive)}
+                deltaHint="Savings rate vs. first half of the window"
+                headline={`${fmtPct(s.saved / Math.max(1e-9, s.costNaive))} less than going direct`}
+                sub={`${rangeLabel} vs. a gateway-less baseline`}
+              />
+              <StatCard label="Actual spend" value={fmtUsd(s.costActual)} delta={trend(pts, (p) => p.costActual, (p) => p.requests)} deltaHint="Cost per request vs. first half of the window" goodWhenDown headline={`${fmtUsd(s.costNaive)} without the gateway`} sub="Models, search and embeddings" />
+              <StatCard label="Requests" value={fmtNum(s.requests)} delta={trend(pts, (p) => p.requests)} deltaHint="Volume vs. first half of the window" headline={`${fmtPct(s.cacheHits / Math.max(1, s.requests))} served from cache`} sub={`p50 ${fmtMs(s.latencyP50)} · p95 ${fmtMs(s.latencyP95)}`} />
+              <StatCard label="Threats stopped" value={fmtNum(s.blocked)} delta={trend(pts, (p) => p.blocked, (p) => p.requests)} deltaHint="Threats per request vs. first half of the window" goodWhenDown headline={`${fmtNum(s.honeypotted)} trapped in the honeypot`} sub="Never reached or billed a model" />
             </div>
 
-            {/* KPI row */}
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-[#1f1f25] md:grid-cols-3 xl:grid-cols-6">
-              <Kpi label="Saved in range" value={fmtUsd(s.saved)} sub={`${fmtPct(s.saved / Math.max(1e-9, s.costNaive))} of naive spend`} hero />
-              <Kpi label="Spend" value={fmtUsd(s.costActual)} sub={`vs ${fmtUsd(s.costNaive)} without gateway`} />
-              <Kpi label="Requests" value={fmtNum(s.requests)} sub={`p50 ${fmtMs(s.latencyP50)} · p95 ${fmtMs(s.latencyP95)}`} />
-              <Kpi label="Threats stopped" value={fmtNum(s.blocked)} sub={`${fmtNum(s.honeypotted)} trapped in honeypot`} />
-              <Kpi label="Cache hit rate" value={fmtPct(s.cacheHits / Math.max(1, s.requests))} sub={`${fmtNum(s.tokensSaved)} tokens saved`} />
-              <Kpi label="Searches avoided" value={fmtNum(Math.max(0, s.searchesNaive - s.searchesSent))} sub={`${fmtNum(s.searchesSent)} sent of ${fmtNum(s.searchesNaive)}`} />
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Card
-                className="lg:col-span-2"
-                title="Spend: with vs without gateway"
-                actions={<TableToggle on={tables.spend} onClick={() => toggle('spend')} />}
-              >
-                <div className="mb-3 flex flex-wrap items-center gap-4">
-                  <LegendKey color={CHART.neutral} label="Without gateway" />
-                  <LegendKey color={CHART.efficiency} label="Actual spend" />
-                  <LegendKey color="rgba(5,150,105,0.35)" label="Saved" shape="rect" />
-                </div>
-                {tables.spend ? (
-                  <DataTable columns={['Time', 'Without gateway', 'Actual', 'Saved']} rows={pts.map((p) => [fx(p.t), fmtUsd(p.costNaive), fmtUsd(p.costActual), fmtUsd(p.costNaive - p.costActual)])} />
-                ) : (
-                  <LineChart
-                    x={pts.map((p) => p.t)}
-                    series={[
-                      { id: 'naive', label: 'Without gateway', color: CHART.neutral, values: pts.map((p) => p.costNaive) },
-                      { id: 'actual', label: 'Actual spend', color: CHART.efficiency, values: pts.map((p) => p.costActual) },
-                    ]}
-                    shadeBetween={['naive', 'actual']}
-                    fmtX={fx}
-                    fmtY={fmtCompactUsd}
-                  />
-                )}
-              </Card>
-
-              <Card title="Savings by pillar" actions={<TableToggle on={tables.pillar} onClick={() => toggle('pillar')} />}>
-                {tables.pillar ? (
-                  <DataTable
-                    columns={['Pillar', 'Saved', 'Share']}
-                    rows={(['efficiency', 'search', 'security'] as const).map((k) => [k === 'search' ? 'SerpAPI routing' : k[0].toUpperCase() + k.slice(1), fmtUsd(s.savedByPillar[k]), fmtPct(s.savedByPillar[k] / Math.max(1e-9, s.saved))])}
-                  />
-                ) : (
-                  <>
-                    <BarList
-                      fmt={fmtUsd}
-                      items={[
-                        { id: 'efficiency', label: 'Efficiency · caching & compression', value: s.savedByPillar.efficiency, color: CHART.efficiency, sub: fmtPct(s.savedByPillar.efficiency / Math.max(1e-9, s.saved)) },
-                        { id: 'search', label: 'SerpAPI routing', value: s.savedByPillar.search, color: CHART.search, sub: fmtPct(s.savedByPillar.search / Math.max(1e-9, s.saved)) },
-                        { id: 'security', label: 'Security · attacks never billed', value: s.savedByPillar.security, color: CHART.security, sub: fmtPct(s.savedByPillar.security / Math.max(1e-9, s.saved)) },
-                      ]}
-                    />
-                    <div className="mt-5 border-t border-border pt-4">
-                      <div className="mb-2 flex items-center gap-2 text-[12px] text-fg-muted">
-                        <ShieldAlert size={13} style={{ color: CHART.security }} /> Security impact
-                      </div>
-                      <p className="text-[12px] leading-relaxed text-fg-subtle">
-                        <span className="tabular-nums text-fg">{fmtNum(s.blocked)}</span> malicious requests never reached a model; <span className="tabular-nums text-fg">{fmtNum(s.honeypotted)}</span> were kept busy by the honeypot instead.
-                      </p>
-                      <ul className="mt-3 space-y-1.5">
-                        {s.threats.map((t) => (
-                          <li key={t.type} className="flex justify-between text-[12px]">
-                            <span className="text-fg-muted">{t.type.replace('_', ' ')}</span>
-                            <span className="tabular-nums text-fg">{fmtNum(t.count)}</span>
-                          </li>
+            <div className="px-4 lg:px-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Spend</CardTitle>
+                  <CardDescription>Without the gateway vs. actual · {rangeLabel.toLowerCase()}</CardDescription>
+                  <CardAction>
+                    <ToggleGroup type="single" value={range} onValueChange={(v) => v && setRange(v as Range)} variant="outline" className="hidden gap-0 md:flex [&>*+*]:border-l-0 [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md [&>*]:rounded-none">
+                      {RANGES.map((r) => (
+                        <ToggleGroupItem key={r.id} value={r.id} className="h-8 px-4 text-xs">
+                          {r.long}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                    <Select value={range} onValueChange={(v) => setRange(v as Range)}>
+                      <SelectTrigger className="h-8 w-36 md:hidden" aria-label="Time range">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RANGES.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.long}
+                          </SelectItem>
                         ))}
-                      </ul>
-                    </div>
-                  </>
-                )}
+                      </SelectContent>
+                    </Select>
+                  </CardAction>
+                </CardHeader>
+                <CardContent className={cn('px-2 pt-2 sm:px-6', series.loading && 'opacity-70')}>
+                  <ChartContainer config={spendConfig} className="aspect-auto h-[260px] w-full">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="fillNaive" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-naive)" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="var(--color-naive)" stopOpacity={0.02} />
+                        </linearGradient>
+                        <linearGradient id="fillActual" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-actual)" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="var(--color-actual)" stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="t" tickLine={false} axisLine={false} tickMargin={8} minTickGap={40} tickFormatter={fx} />
+                      <YAxis tickLine={false} axisLine={false} width={48} tickFormatter={(v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${Math.round(v)}`)} />
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" labelFormatter={(l) => fx(Number(l))} valueFormatter={fmtUsd} />} />
+                      <Area dataKey="naive" type="natural" fill="url(#fillNaive)" stroke="var(--color-naive)" strokeWidth={1.5} />
+                      <Area dataKey="actual" type="natural" fill="url(#fillActual)" stroke="var(--color-actual)" strokeWidth={1.5} />
+                    </AreaChart>
+                  </ChartContainer>
+                </CardContent>
               </Card>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Card className="lg:col-span-2" title="Requests" actions={<TableToggle on={tables.req} onClick={() => toggle('req')} />}>
-                {tables.req ? (
-                  <DataTable columns={['Time', 'Requests', 'Blocked']} rows={pts.map((p) => [fx(p.t), fmtNum(p.requests), fmtNum(p.blocked)])} />
-                ) : (
-                  <ColumnChart x={pts.map((p) => p.t)} values={pts.map((p) => p.requests)} color={CHART.neutral} label="requests" fmtX={fx} fmtY={(v) => fmtNum(Math.round(v))} />
-                )}
+            <div className="grid gap-4 px-4 lg:grid-cols-3 lg:px-6">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Traffic</CardTitle>
+                  <CardDescription>Requests and threats stopped · {rangeLabel.toLowerCase()}</CardDescription>
+                </CardHeader>
+                <CardContent className="px-2 sm:px-6">
+                  <ChartContainer config={reqConfig} className="aspect-auto h-[220px] w-full">
+                    <BarChart data={chartData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="t" tickLine={false} axisLine={false} tickMargin={8} minTickGap={40} tickFormatter={fx} />
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={(l) => fx(Number(l))} />} />
+                      <Bar dataKey="requests" fill="var(--color-requests)" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="blocked" fill="var(--color-blocked)" radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
               </Card>
 
-              <Card
-                title="Recent threats"
-                actions={
-                  <IconButton label="Open blocked traces" onClick={() => navigate('/traces?status=blocked')}>
-                    <ArrowUpRight size={14} />
-                  </IconButton>
-                }
-                bodyClassName="px-2 pb-2"
-              >
-                {threats.length === 0 ? (
-                  <div className="px-2 py-8 text-center text-[12px] text-fg-subtle">No threats in the live window.</div>
-                ) : (
-                  <ul>
-                    {threats.map((t) => (
-                      <li key={t.id}>
-                        <button onClick={() => navigate(`/traces?id=${t.id}`)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-muted/50">
-                          <StatusBadge status={t.status} />
-                          <span className="min-w-0 flex-1 truncate text-[12px] text-fg-muted">{t.prompt}</span>
-                          {t.leakedThreat && <span className="text-[11px] text-security-amber">missed</span>}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Where savings come from</CardTitle>
+                  <CardDescription>
+                    {fmtUsd(s.saved)} saved · {rangeLabel.toLowerCase()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {(
+                    [
+                      ['search', 'Search routing', 'hsl(var(--chart-3))', `${fmtNum(Math.max(0, s.searchesNaive - s.searchesSent))} searches avoided`],
+                      ['efficiency', 'Caching & compression', 'hsl(var(--chart-1))', `${fmtNum(s.tokensSaved)} tokens saved`],
+                      ['security', 'Attacks never billed', 'hsl(var(--chart-4))', `${fmtNum(s.blocked)} requests stopped`],
+                    ] as const
+                  ).map(([k, label, color, sub]) => {
+                    const v = s.savedByPillar[k];
+                    const pct = v / Math.max(1e-9, s.saved);
+                    return (
+                      <div key={k} className="space-y-1.5">
+                        <div className="flex items-baseline justify-between gap-2 text-sm">
+                          <span className="font-medium">{label}</span>
+                          <span className="tabular-nums">{fmtUsd(v)}</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full" style={{ width: `${Math.max(1, pct * 100)}%`, background: color }} />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{sub}</span>
+                          <span className="tabular-nums">{fmtPct(pct)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
               </Card>
             </div>
 
-            <div className="flex items-center gap-2 px-1 pb-2 text-[11.5px] text-fg-subtle">
-              <TrendingUp size={13} /> Savings are measured per request against a naive baseline: the model the client asked for, no caching or compression, and a SerpAPI search on every prompt (the full query fan-out when live data is needed).
+            <div className="px-4 lg:px-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent threats</CardTitle>
+                  <CardDescription>Attacks seen in the live window</CardDescription>
+                  <CardAction>
+                    <Button variant="outline" size="sm" onClick={() => navigate('/traces?status=blocked')}>
+                      View all
+                    </Button>
+                  </CardAction>
+                </CardHeader>
+                <CardContent className="px-0 pb-2">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="pl-6">Time</TableHead>
+                        <TableHead>Outcome</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Confidence</TableHead>
+                        <TableHead className="pr-6">Prompt</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {threats.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                            No threats in the live window.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {threats.map((t) => (
+                        <TableRow key={t.id} className="cursor-pointer" onClick={() => navigate(`/traces?id=${t.id}`)}>
+                          <TableCell className="whitespace-nowrap pl-6 tabular-nums text-muted-foreground">{new Date(t.ts).toLocaleTimeString()}</TableCell>
+                          <TableCell>{t.leakedThreat ? <Badge variant="outline" className="text-security-amber">Missed</Badge> : <StatusBadge status={t.status} />}</TableCell>
+                          <TableCell className="capitalize">{(t.threat ?? 'unknown').replace('_', ' ')}</TableCell>
+                          <TableCell className="text-right tabular-nums">{t.threatConfidence ? fmtPct(t.threatConfidence) : '—'}</TableCell>
+                          <TableCell className="max-w-[420px] truncate pr-6 text-muted-foreground">{t.prompt}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </div>
+
+            <p className="px-4 text-xs text-muted-foreground lg:px-6">
+              Savings are measured per request against a baseline with no gateway: the model the client asked for, no caching or compression, and a web search on every prompt (the full query fan-out when live data is needed).
+            </p>
           </div>
         )}
       </div>
@@ -181,22 +249,27 @@ export function OverviewPage() {
   );
 }
 
-function Kpi({ label, value, sub, hero }: { label: string; value: string; sub: string; hero?: boolean }) {
+function StatCard({ label, value, delta, deltaHint, headline, sub, goodWhenDown }: { label: string; value: string; delta: number; deltaHint: string; headline: string; sub: string; goodWhenDown?: boolean }) {
+  const up = delta >= 0;
+  const Icon = up ? TrendingUp : TrendingDown;
+  const good = goodWhenDown ? !up : up;
   return (
-    <div className="bg-card px-4 py-3.5">
-      <div className="text-[11.5px] text-fg-subtle">{label}</div>
-      <div className={clsx('mt-1 text-[20px] font-medium tabular-nums tracking-tight', hero ? 'text-efficiency' : 'text-fg')}>{value}</div>
-      <div className="mt-0.5 truncate text-[11px] text-fg-subtle" title={sub}>
-        {sub}
-      </div>
-    </div>
-  );
-}
-
-function TableToggle({ on, onClick }: { on?: boolean; onClick: () => void }) {
-  return (
-    <IconButton label={on ? 'Show chart' : 'Show as table'} onClick={onClick} className={on ? 'bg-accent text-fg' : undefined}>
-      <Table2 size={14} />
-    </IconButton>
+    <Card className="bg-gradient-to-t from-primary/[0.03] to-card">
+      <CardHeader className="pb-3">
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="text-2xl font-semibold tabular-nums xl:text-3xl">{value}</CardTitle>
+        <CardAction>
+          <Badge variant="outline" title={deltaHint} className={cn('font-normal', good ? 'text-foreground' : 'text-muted-foreground')}>
+            <Icon />
+            {up ? '+' : ''}
+            {(delta * 100).toFixed(1)}%
+          </Badge>
+        </CardAction>
+      </CardHeader>
+      <CardFooter className="flex-col items-start gap-1 text-sm">
+        <div className="line-clamp-1 font-medium">{headline}</div>
+        <div className="text-muted-foreground">{sub}</div>
+      </CardFooter>
+    </Card>
   );
 }

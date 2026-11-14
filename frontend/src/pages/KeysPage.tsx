@@ -147,7 +147,7 @@ export function KeysPage() {
           <TriangleAlert size={14} className="mt-0.5 shrink-0" /> This is the only time the full key is shown. Store it somewhere safe.
         </p>
         <div className="flex items-center gap-1 rounded-lg border border-input bg-muted/50 py-1 pl-3 pr-1">
-          <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-fg">{created?.secret}</code>
+          <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">{created?.secret}</code>
           {created && <CopyButton text={created.secret} label="Copy key" />}
         </div>
       </Modal>
@@ -167,7 +167,7 @@ export function KeysPage() {
           </>
         }
       >
-        Requests using <span className="text-fg">{revoking?.name}</span> (<code className="font-mono">{revoking?.prefix}…</code>) will start failing with 401 immediately. This can’t be undone.
+        Requests using <span className="text-foreground">{revoking?.name}</span> (<code className="font-mono">{revoking?.prefix}…</code>) will start failing with 401 immediately. This can’t be undone.
       </Modal>
     </div>
   );
@@ -211,8 +211,8 @@ function Quickstart({ baseUrl }: { baseUrl: string }) {
   const code = SNIPPETS(baseUrl)[lang];
   return (
     <Card title="Quickstart" actions={<CopyButton text={code} label="Copy snippet" />}>
-      <p className="mb-3 text-[12px] leading-relaxed text-fg-subtle">
-        One-line swap: the gateway is OpenAI-compatible, so point your existing client’s base URL at <code className="font-mono text-fg-muted">{baseUrl}</code> and use a gateway key. Nothing else in your app changes — Claude, GPT and Llama models all work through the same OpenAI SDK.
+      <p className="mb-3 text-[13px] leading-relaxed text-muted-foreground">
+        One-line swap: the gateway is OpenAI-compatible, so point your existing client’s base URL at <code className="font-mono text-muted-foreground">{baseUrl}</code> and use a gateway key. Nothing else in your app changes — Claude, GPT and Llama models all work through the same OpenAI SDK.
       </p>
       <Tabs value={lang} onValueChange={(v) => setLang(v as typeof lang)} className="mb-2">
         <TabsList className="h-8">
@@ -223,11 +223,11 @@ function Quickstart({ baseUrl }: { baseUrl: string }) {
           ))}
         </TabsList>
       </Tabs>
-      <pre className="overflow-x-auto rounded-xl border border-border bg-background py-3 font-mono text-[12px] leading-relaxed text-fg-muted">
+      <pre className="overflow-x-auto rounded-xl border border-border bg-background py-3 font-mono text-[13px] leading-relaxed text-muted-foreground">
         {code.split('\n').map((line, i) => {
           const swap = /base_url=|baseURL:|curl https?:/.test(line);
           return (
-            <div key={i} className={clsx('px-4', swap && 'border-l-2 border-efficiency bg-efficiency/10 text-fg')}>
+            <div key={i} className={clsx('px-4', swap && 'border-l-2 border-efficiency bg-efficiency/10 text-foreground')}>
               {line || ' '}
             </div>
           );

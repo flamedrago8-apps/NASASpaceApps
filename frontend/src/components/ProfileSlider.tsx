@@ -56,23 +56,21 @@ export function ProfileSlider({ compact }: { compact?: boolean }) {
     );
 
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <Gauge size={14} className="text-fg-subtle" />
-        <span className="text-[12.5px] font-medium text-fg">Cost vs Speed</span>
-        <span className="ml-auto text-[12px] font-medium" style={{ color: stop.color }}>
-          {profile ? stop.label : '…'}
-        </span>
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h3 className="font-semibold leading-none tracking-tight">Cost vs speed</h3>
+        <span className="text-sm text-muted-foreground">{profile ? stop.label : '…'}</span>
       </div>
-      <Slider min={0} max={2} step={1} value={[idx]} disabled={!profile} onValueChange={([v]) => setProfile(STOPS[v].id)} aria-label="Cost vs speed" rangeStyle={{ backgroundColor: stop.color }} />
-      <div className="mt-1.5 flex justify-between text-[11px] text-fg-subtle">
+      <p className="mb-5 text-sm text-muted-foreground">Applies to all traffic immediately.</p>
+      <Slider min={0} max={2} step={1} value={[idx]} disabled={!profile} onValueChange={([v]) => setProfile(STOPS[v].id)} aria-label="Cost vs speed" />
+      <div className="mt-2 flex justify-between text-xs text-muted-foreground">
         {STOPS.map((s) => (
-          <button key={s.id} onClick={() => setProfile(s.id)} className={clsx('hover:text-fg', profile === s.id && 'text-fg')}>
+          <button key={s.id} onClick={() => setProfile(s.id)} className={clsx('hover:text-foreground', profile === s.id && 'font-medium text-foreground')}>
             {s.label}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-[11.5px] leading-snug text-fg-subtle">{stop.desc}</p>
+      <p className="mt-4 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">{stop.desc}</p>
     </div>
   );
 }

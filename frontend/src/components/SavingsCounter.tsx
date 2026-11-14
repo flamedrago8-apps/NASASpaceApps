@@ -1,7 +1,8 @@
-import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
 import { api, type Lifetime } from '../api';
 import { useTraces } from '../state/traces';
+import { Badge } from './ui/badge';
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 
 /** Eases a number toward its target so dollar amounts visibly tick up. */
 function useTween(target: number, ms = 900) {
@@ -14,8 +15,7 @@ function useTween(target: number, ms = 900) {
     cancelAnimationFrame(raf.current);
     const step = (now: number) => {
       const p = Math.min(1, (now - start) / ms);
-      const e = 1 - (1 - p) ** 3;
-      const x = a + (target - a) * e;
+      const x = a + (target - a) * (1 - (1 - p) ** 3);
       setV(x);
       from.current = x;
       if (p < 1) raf.current = requestAnimationFrame(step);
@@ -29,10 +29,10 @@ function useTween(target: number, ms = 900) {
 const money = (v: number) => (Math.abs(v) < 100 ? `$${v.toFixed(4)}` : `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 /**
- * The big "Before vs After" counter. Starts from the gateway's lifetime totals and adds
- * every live trace as it streams in, so it clicks up the moment a request is saved.
+ * "Before vs after" savings: lifetime totals plus every live trace as it streams in,
+ * so the figure ticks up the moment a request is saved.
  */
-export function SavingsCounter({ compact }: { compact?: boolean }) {
+export function SavingsCounter() {
   const { traces } = useTraces();
   const [base, setBase] = useState<{ life: Lifetime; at: number } | null>(null);
   const [bump, setBump] = useState<{ id: string; amount: number } | null>(null);
@@ -48,69 +48,64 @@ export function SavingsCounter({ compact }: { compact?: boolean }) {
     };
   }, []);
 
-  // Traces that arrived after the last lifetime snapshot.
   const fresh = base ? traces.filter((t) => t.ts > base.at) : [];
   const naive = (base?.life.costNaive ?? 0) + fresh.reduce((s, t) => s + t.costBaseline, 0);
   const actual = (base?.life.costActual ?? 0) + fresh.reduce((s, t) => s + t.costActual, 0);
-  const saved = naive - actual;
   const requests = (base?.life.requests ?? 0) + fresh.length;
 
   const latest = fresh[0];
   useEffect(() => {
     if (latest && latest.saved > 0.00001) {
       setBump({ id: latest.id, amount: latest.saved });
-      const t = setTimeout(() => setBump((b) => (b?.id === latest.id ? null : b)), 1600);
+      const t = setTimeout(() => setBump((b) => (b?.id === latest.id ? null : b)), 2500);
       return () => clearTimeout(t);
     }
   }, [latest]);
 
-  const tSaved = useTween(saved);
+  const tSaved = useTween(naive - actual);
   const tNaive = useTween(naive);
   const tActual = useTween(actual);
-  const pct = naive > 0 ? (saved / naive) * 100 : 0;
+  const pct = naive > 0 ? ((naive - actual) / naive) * 100 : 0;
 
   return (
-    <div className={clsx('relative overflow-hidden rounded-xl border border-border bg-card', compact ? 'p-4' : 'p-5 sm:p-6')}>
-      <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-efficiency/10 blur-3xl" aria-hidden />
-      <div className="relative flex flex-wrap items-end gap-x-10 gap-y-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[12px] text-fg-subtle">
-            <span className="h-1.5 w-1.5 animate-blink rounded-full bg-efficiency" /> Total dollars saved
-          </div>
-          <div className="relative mt-1 flex items-baseline gap-3">
-            <span className={clsx('font-medium tabular-nums tracking-tight text-efficiency', compact ? 'text-[34px]' : 'text-[44px] sm:text-[56px]')} aria-live="polite">
-              {base ? money(tSaved) : '—'}
-            </span>
-            {bump && (
-              <span key={bump.id} className="animate-toast-in rounded-md bg-efficiency/15 px-2 py-0.5 text-[13px] font-medium tabular-nums text-efficiency">
-                +{money(bump.amount)}
-              </span>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Card className="bg-gradient-to-t from-primary/[0.03] to-card sm:col-span-2">
+        <CardHeader className="pb-3">
+          <CardDescription>Total saved</CardDescription>
+          <CardTitle className="text-3xl font-semibold tabular-nums xl:text-4xl" aria-live="polite">
+            {base ? money(tSaved) : '—'}
+          </CardTitle>
+          <CardAction>
+            {bump ? (
+              <Badge key={bump.id} variant="outline" className="animate-in fade-in-0 slide-in-from-bottom-1 font-normal text-efficiency">
+                +{money(bump.amount)} just now
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="font-normal text-muted-foreground">
+                Live
+              </Badge>
             )}
-          </div>
-        </div>
-        <div className="flex gap-8 pb-2">
-          <Figure label="Without gateway" value={base ? money(tNaive) : '—'} muted />
-          <Figure label="Actual spend" value={base ? money(tActual) : '—'} />
-          <Figure label="Cut" value={base ? `${pct.toFixed(1)}%` : '—'} />
-          {!compact && <Figure label="Requests" value={base ? requests.toLocaleString() : '—'} />}
-        </div>
-      </div>
-      <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-muted" title={`Actual spend is ${(100 - pct).toFixed(1)}% of what the same traffic would cost without the gateway`}>
-        <div className="h-full rounded-full bg-[#059669] transition-[width] duration-700" style={{ width: `${Math.max(0, Math.min(100, 100 - pct))}%` }} />
-      </div>
-      <div className="relative mt-1.5 flex justify-between text-[11px] text-fg-subtle">
-        <span>Actual spend as share of naive spend</span>
-        <span className="tabular-nums">{(100 - pct).toFixed(1)}%</span>
-      </div>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1 text-sm">
+          <div className="font-medium">{pct.toFixed(1)}% less than sending the same traffic direct</div>
+          <div className="text-muted-foreground">Updates with every request through the gateway</div>
+        </CardFooter>
+      </Card>
+      <Mini label="Without gateway" value={base ? money(tNaive) : '—'} sub="What the same traffic would cost" />
+      <Mini label="Actual spend" value={base ? money(tActual) : '—'} sub={`${requests.toLocaleString()} requests`} />
     </div>
   );
 }
 
-function Figure({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+function Mini({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div>
-      <div className="text-[11.5px] text-fg-subtle">{label}</div>
-      <div className={clsx('mt-0.5 text-[17px] font-medium tabular-nums', muted ? 'text-fg-muted line-through decoration-fg-subtle/50' : 'text-fg')}>{value}</div>
-    </div>
+    <Card className="bg-gradient-to-t from-primary/[0.03] to-card">
+      <CardHeader className="pb-3">
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="text-2xl font-semibold tabular-nums">{value}</CardTitle>
+      </CardHeader>
+      <CardFooter className="text-sm text-muted-foreground">{sub}</CardFooter>
+    </Card>
   );
 }

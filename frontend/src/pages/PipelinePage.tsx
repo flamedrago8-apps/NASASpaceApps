@@ -4,7 +4,6 @@ import { History, LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, PIPELINE_ID, type Deployment, type PipelineDoc } from '../api';
 import { CanvasToolbar, NodeDrawer, StatsPill } from '../components/canvas/CanvasChrome';
-import { ProfileSlider } from '../components/ProfileSlider';
 import { FlowCanvas } from '../components/canvas/FlowCanvas';
 import { NodeInspector } from '../components/inspector/NodeInspector';
 import { LiveTrace } from '../components/trace/LiveTrace';
@@ -158,14 +157,11 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
       <div className="flex h-full min-h-0 flex-col">
         <PageHeader
           title={meta.name}
-          subtitle={<span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px]">v{meta.deployedVersion}</span>}
+          subtitle={<span className="rounded-md bg-muted px-1.5 py-0.5 text-xs">v{meta.deployedVersion}</span>}
           actions={
             <>
-              <span className="hidden lg:block">
-                <ProfileSlider compact />
-              </span>
               <SaveIndicator state={saveState} hasDraft={meta.hasDraft} />
-              <button onClick={() => setLive(!live)} className="flex items-center gap-2 text-[12px] text-fg-muted hover:text-fg" aria-pressed={live}>
+              <button onClick={() => setLive(!live)} className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground" aria-pressed={live}>
                 <span className={clsx('relative h-[18px] w-8 rounded-full transition-colors', live ? 'bg-efficiency' : 'bg-input')}>
                   <span className={clsx('absolute top-[2px] h-3.5 w-3.5 rounded-full bg-canvas transition-all', live ? 'left-[16px]' : 'left-[2px]')} />
                 </span>
@@ -256,7 +252,7 @@ function Editor({ initial, route, onReload }: { initial: PipelineDoc; route: Rou
 function SaveIndicator({ state, hasDraft }: { state: SaveState; hasDraft: boolean }) {
   const text = state === 'saving' ? 'Saving…' : state === 'error' ? 'Not saved' : hasDraft ? 'Draft saved · not deployed' : 'All changes deployed';
   return (
-    <span className={clsx('hidden items-center gap-1.5 text-[12px] md:flex', state === 'error' ? 'text-danger' : 'text-fg-subtle')}>
+    <span className={clsx('hidden items-center gap-1.5 text-[13px] md:flex', state === 'error' ? 'text-danger' : 'text-muted-foreground')}>
       {state === 'saving' && <LoaderCircle size={12} className="animate-spin" />}
       {text}
     </span>
@@ -320,15 +316,15 @@ function HistoryModal({ open, current, onClose, onRestore }: { open: boolean; cu
         <ul className="-mx-2 max-h-[50vh] overflow-y-auto">
           {list.map((d) => (
             <li key={d.version} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-muted/50">
-              <span className="w-10 text-[12.5px] tabular-nums text-fg">v{d.version}</span>
+              <span className="w-10 text-sm tabular-nums text-foreground">v{d.version}</span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[12.5px] text-fg-muted">{d.note || 'No note'}</div>
-                <div className="text-[11.5px] text-fg-subtle">
+                <div className="truncate text-sm text-muted-foreground">{d.note || 'No note'}</div>
+                <div className="text-xs text-muted-foreground">
                   {new Date(d.deployedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {d.author}
                 </div>
               </div>
               {d.version === current ? (
-                <span className="rounded-md bg-efficiency/10 px-2 py-0.5 text-[11px] text-efficiency">Live</span>
+                <span className="rounded-md bg-efficiency/10 px-2 py-0.5 text-xs text-efficiency">Live</span>
               ) : (
                 <Button size="sm" onClick={() => onRestore(d.version)}>
                   Restore
