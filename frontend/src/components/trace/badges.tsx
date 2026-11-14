@@ -32,7 +32,7 @@ const OUTCOME: Record<SpanOutcome, { color: string }> = {
 export function OutcomeBadge({ outcome }: { outcome: SpanOutcome }) {
   const c = OUTCOME[outcome].color;
   return (
-    <span className="inline-block min-w-[58px] rounded border px-1.5 py-px text-center font-mono text-2xs uppercase tracking-wide" style={{ color: c, borderColor: `${c}40` }}>
+    <span className="inline-block min-w-[58px] rounded border px-1.5 py-px text-center font-mono text-[10px] tracking-wide" style={{ color: c, borderColor: `${c}40` }}>
       {outcome}
     </span>
   );

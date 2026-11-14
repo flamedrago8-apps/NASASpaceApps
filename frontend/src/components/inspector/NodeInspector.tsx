@@ -31,8 +31,8 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-start gap-3 border-b border-line px-4 py-3.5">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border" style={{ background: a.soft, borderColor: a.ring.replace('0.45', '0.3'), color: a.fg }}>
+      <div className="flex items-start gap-3 border-b border-white/[0.06] px-4 py-3.5">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border" style={{ background: a.soft, borderColor: a.ring.replace('0.45', '0.3'), color: a.fg }}>
           <Icon size={17} />
         </div>
         <div className="min-w-0 flex-1">
@@ -44,7 +44,7 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
             <span className="font-mono text-fg-subtle">id: {node.id}</span>
           </div>
         </div>
-        <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-3 hover:text-fg" aria-label="Close inspector">
+        <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-white/[0.07] hover:text-fg" aria-label="Close inspector">
           <X size={15} />
         </button>
       </div>
@@ -58,7 +58,7 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-lg border border-line bg-surface-2 px-3 py-2.5">
+        <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5">
           <div>
             <div className="text-[12px] font-medium text-fg">{node.data.enabled ? 'Enabled' : 'Bypassed'}</div>
             <div className="text-2xs text-fg-subtle">{node.data.enabled ? 'Processing live traffic' : 'Payloads pass straight through'}</div>
@@ -81,7 +81,7 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
         {/* Live metrics */}
         <section>
           <SectionTitle>Live metrics · last {traces.length} req</SectionTitle>
-          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-line bg-line">
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06]">
             <Metric label="Invocations" value={stats ? fmtNum(stats.count) : '—'} />
             <Metric label="p50" value={stats?.count ? fmtMs(percentile(stats.durations, 50)) : '—'} />
             <Metric label="p95" value={stats?.count ? fmtMs(percentile(stats.durations, 95)) : '—'} />
@@ -92,7 +92,7 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
               value={stats ? fmtNum(c.pillar === 'search' ? stats.callsAvoided : c.metric === 'tokens' ? stats.tokensSaved : stats.flagged) : '—'}
             />
           </div>
-          <div className="mt-2 rounded-lg border border-line bg-surface-2 px-2 pb-1 pt-2">
+          <div className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.025] px-2 pb-1 pt-2">
             <div className="mb-1 flex justify-between px-1 text-2xs text-fg-subtle">
               <span>throughput · 4 min</span>
               <span className="font-mono">10s buckets</span>
@@ -104,7 +104,7 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
         {/* Recent events */}
         <section>
           <SectionTitle>Recent events</SectionTitle>
-          <div className="divide-y divide-line overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.06]">
             {recent.length === 0 && <div className="px-3 py-3 text-[12px] text-fg-subtle">No traffic yet.</div>}
             {recent.map(({ t, s }) => (
               <div key={t.id} className="px-3 py-2">
@@ -122,14 +122,14 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
         </section>
       </div>
 
-      <div className="flex gap-2 border-t border-line px-4 py-3">
-        <button onClick={onDuplicate} className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-line-strong text-[12px] text-fg-muted hover:bg-surface-3 hover:text-fg">
+      <div className="flex gap-2 border-t border-white/[0.06] px-4 py-3">
+        <button onClick={onDuplicate} className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-[#2a2a31] text-[12px] text-fg-muted hover:bg-white/[0.07] hover:text-fg">
           <Copy size={13} /> Duplicate
         </button>
         <button
           onClick={onDelete}
           disabled={node.deletable === false}
-          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-line-strong text-[12px] text-fg-muted hover:border-danger/40 hover:text-danger disabled:pointer-events-none disabled:opacity-40"
+          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-[#2a2a31] text-[12px] text-fg-muted hover:border-danger/40 hover:text-danger disabled:pointer-events-none disabled:opacity-40"
         >
           <Trash2 size={13} /> Remove
         </button>
@@ -139,14 +139,14 @@ export function NodeInspector({ node, stats, traces, onChange, onClose, onDelete
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="mb-2 text-2xs font-medium uppercase tracking-[0.08em] text-fg-subtle">{children}</h3>;
+  return <h3 className="mb-2 text-[11px] font-medium text-fg-subtle">{children}</h3>;
 }
 
 function Metric({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="bg-surface-2 px-2.5 py-2">
+    <div className="bg-white/[0.025] px-2.5 py-2">
       <div className="text-2xs text-fg-subtle">{label}</div>
-      <div className="mt-0.5 font-mono text-[13px] tabular-nums text-fg" style={accent ? { color: accent } : undefined}>
+      <div className="mt-0.5 text-[13px] tabular-nums text-fg" style={accent ? { color: accent } : undefined}>
         {value}
       </div>
     </div>
@@ -168,7 +168,7 @@ function FieldRow({ field, value, onChange, color }: { field: Field; value: Conf
       const shown = field.unit === '%' ? `${Math.round(v * 100)}%` : field.step < 1 ? v.toFixed(2) : String(v);
       return (
         <div>
-          {header(<span className="font-mono text-[12px] tabular-nums text-fg">{shown}</span>)}
+          {header(<span className="text-[12px] tabular-nums text-fg">{shown}</span>)}
           <Slider value={v} min={field.min} max={field.max} step={field.step} onChange={onChange} color={color} />
           {hint}
         </div>
@@ -193,14 +193,14 @@ function FieldRow({ field, value, onChange, color }: { field: Field; value: Conf
       return (
         <div>
           {header()}
-          <div className={clsx('flex h-7 items-center rounded-md border border-line-strong bg-surface-2 focus-within:border-fg-subtle')}>
+          <div className={clsx('flex h-7 items-center rounded-md border border-[#2a2a31] bg-white/[0.025] focus-within:border-fg-subtle')}>
             <input
               type="number"
               min={field.min}
               max={field.max}
               value={Number(value)}
               onChange={(e) => onChange(Math.min(field.max, Math.max(field.min, Number(e.target.value) || field.min)))}
-              className="h-full w-full bg-transparent px-2 font-mono text-[12px] tabular-nums text-fg outline-none"
+              className="h-full w-full bg-transparent px-2 text-[12px] tabular-nums text-fg outline-none"
             />
             {field.unit && <span className="pr-2 font-mono text-2xs text-fg-subtle">{field.unit}</span>}
           </div>

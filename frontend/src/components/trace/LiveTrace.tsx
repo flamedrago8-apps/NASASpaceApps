@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { ChevronRight, Pause, Play, Search, TriangleAlert } from 'lucide-react';
+import { ChevronRight, ChevronUp, Search, TriangleAlert } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { CATALOG } from '../../lib/catalog';
 import { fmtMs, fmtTime, fmtUsd } from '../../lib/format';
@@ -7,7 +7,7 @@ import { ACCENT } from '../../lib/theme';
 import type { Span, Trace, TraceStatus } from '../../types';
 import { OutcomeBadge, StatusBadge } from './badges';
 
-const COLS = 'grid grid-cols-[18px_96px_112px_minmax(150px,1.3fr)_92px_minmax(220px,2fr)_70px_108px_76px_80px] items-center gap-x-3';
+const COLS = 'grid grid-cols-[14px_92px_minmax(180px,1.4fr)_92px_minmax(200px,1.6fr)_64px_100px_70px_76px] items-center gap-x-4';
 const SCALE_MS = 4000;
 const TICKS = [0, 1000, 2000, 3000, 4000];
 
@@ -23,15 +23,15 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 type Props = {
   traces: Trace[];
-  running: boolean;
-  onToggleRunning: () => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   rate: number;
   onRate: (r: number) => void;
   onHover: (t: Trace | null) => void;
   onSelectNode: (id: string) => void;
 };
 
-export function LiveTrace({ traces, running, onToggleRunning, rate, onRate, onHover, onSelectNode }: Props) {
+export function LiveTrace({ traces, expanded, onToggleExpanded, rate, onRate, onHover, onSelectNode }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -53,81 +53,87 @@ export function LiveTrace({ traces, running, onToggleRunning, rate, onRate, onHo
     return c;
   }, [traces]);
 
-  const rps = useMemo(() => {
-    const now = traces[0]?.ts ?? Date.now();
-    return traces.filter((t) => now - t.ts < 10_000).length / 10;
-  }, [traces]);
+  const last = traces[0];
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-canvas">
-      {/* toolbar */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-2">
-        <div className="flex items-center gap-2">
-          <span className={clsx('h-1.5 w-1.5 rounded-full', running ? 'animate-blink bg-efficiency' : 'bg-fg-subtle')} />
-          <h2 className="text-[13px] font-medium text-fg">Live Trace</h2>
-          <span className="font-mono text-2xs text-fg-subtle">{rps.toFixed(1)} req/s</span>
-        </div>
-        <div className="flex items-center gap-0.5 overflow-x-auto">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={clsx('whitespace-nowrap rounded-md px-2 py-1 text-[12px] transition-colors', filter === f.id ? 'bg-surface-3 text-fg' : 'text-fg-subtle hover:text-fg-muted')}
-            >
-              {f.label}
-              <span className="ml-1.5 font-mono text-2xs text-fg-subtle">{counts[f.id] ?? 0}</span>
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex h-7 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2 focus-within:border-fg-subtle">
-            <Search size={13} className="text-fg-subtle" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by id, prompt, app…" className="w-44 bg-transparent text-[12px] text-fg outline-none placeholder:text-fg-subtle" />
-          </div>
-          <div className="flex h-7 items-center rounded-md border border-line-strong bg-surface p-0.5">
-            {[1, 2, 5].map((r) => (
-              <button key={r} onClick={() => onRate(r)} className={clsx('h-full rounded px-1.5 font-mono text-[11px]', rate === r ? 'bg-surface-3 text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
-                {r}×
+      <div className="flex h-11 shrink-0 items-center gap-3 px-4">
+        <button onClick={onToggleExpanded} className="flex items-center gap-2 text-[13px] font-medium text-fg" aria-expanded={expanded}>
+          <ChevronUp size={15} className={clsx('text-fg-subtle transition-transform', expanded && 'rotate-180')} />
+          Logs
+          <span className="text-[12px] font-normal tabular-nums text-fg-subtle">{traces.length}</span>
+        </button>
+
+        {expanded ? (
+          <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={clsx('whitespace-nowrap rounded-lg px-2.5 py-1 text-[12px] transition-colors', filter === f.id ? 'bg-white/[0.07] text-fg' : 'text-fg-subtle hover:text-fg-muted')}
+              >
+                {f.label}
+                <span className="ml-1.5 tabular-nums opacity-60">{counts[f.id] ?? 0}</span>
               </button>
             ))}
           </div>
-          <button onClick={onToggleRunning} className="flex h-7 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-[12px] text-fg-muted hover:bg-surface-3 hover:text-fg">
-            {running ? <Pause size={12} /> : <Play size={12} />}
-            {running ? 'Pause' : 'Resume'}
-          </button>
-        </div>
+        ) : (
+          last && (
+            <button onClick={onToggleExpanded} className="flex min-w-0 items-center gap-3 text-[12px] text-fg-subtle hover:text-fg-muted">
+              <StatusBadge status={last.status} />
+              <span className="truncate">{last.prompt}</span>
+              <span className="shrink-0 tabular-nums">{fmtMs(last.latency)}</span>
+              {last.saved > 0.00005 && <span className="shrink-0 tabular-nums text-efficiency">+{fmtUsd(last.saved)}</span>}
+            </button>
+          )
+        )}
+
+        {expanded && (
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="flex h-7 items-center gap-1.5 rounded-lg bg-white/[0.04] px-2.5">
+              <Search size={13} className="text-fg-subtle" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="w-36 bg-transparent text-[12px] text-fg outline-none placeholder:text-fg-subtle" />
+            </div>
+            <div className="flex h-7 items-center rounded-lg bg-white/[0.04] p-0.5" title="Traffic rate">
+              {[1, 2, 5].map((r) => (
+                <button key={r} onClick={() => onRate(r)} className={clsx('h-full rounded-md px-2 text-[11px] tabular-nums', rate === r ? 'bg-white/[0.08] text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
+                  {r}×
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* table */}
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div className="min-w-[1180px]">
-          <div className={clsx(COLS, 'sticky top-0 z-10 border-b border-line bg-canvas/95 px-4 py-1.5 text-2xs font-medium uppercase tracking-[0.06em] text-fg-subtle backdrop-blur')}>
-            <span />
-            <span>Time</span>
-            <span>Request</span>
-            <span>App · prompt</span>
-            <span>Status</span>
-            <span className="relative">
-              <span>Waterfall</span>
-              <span className="absolute inset-x-0 -bottom-1 flex justify-between font-mono normal-case tracking-normal text-fg-subtle/70">
-                {TICKS.map((t) => (
-                  <span key={t} className="w-0 whitespace-nowrap text-center" style={{ transform: t === 0 ? 'translateX(6px)' : t === SCALE_MS ? 'translateX(-10px)' : undefined }}>
-                    {t ? `${t / 1000}s` : ''}
-                  </span>
-                ))}
+      {expanded && (
+        <div className="min-h-0 flex-1 overflow-auto">
+          <div className="min-w-[960px]">
+            <div className={clsx(COLS, 'sticky top-0 z-10 bg-canvas px-4 pb-1.5 pt-1 text-[11px] text-fg-subtle')}>
+              <span />
+              <span>Time</span>
+              <span>Prompt</span>
+              <span>Status</span>
+              <span className="relative">
+                <span className="flex justify-between tabular-nums">
+                  {TICKS.map((t) => (
+                    <span key={t} className="w-0 whitespace-nowrap" style={{ transform: t === SCALE_MS ? 'translateX(-14px)' : undefined }}>
+                      {t ? `${t / 1000}s` : 'Waterfall'}
+                    </span>
+                  ))}
+                </span>
               </span>
-            </span>
-            <span className="text-right">Latency</span>
-            <span className="text-right">Tokens</span>
-            <span className="text-right">SerpAPI</span>
-            <span className="text-right">Saved</span>
+              <span className="text-right">Latency</span>
+              <span className="text-right">Tokens</span>
+              <span className="text-right">Searches</span>
+              <span className="text-right">Saved</span>
+            </div>
+            {rows.map((t) => (
+              <TraceRow key={t.id} t={t} open={open === t.id} onToggle={() => setOpen((o) => (o === t.id ? null : t.id))} onHover={onHover} onSelectNode={onSelectNode} />
+            ))}
+            {rows.length === 0 && <div className="px-4 py-10 text-center text-[12px] text-fg-subtle">No requests match.</div>}
           </div>
-          {rows.map((t) => (
-            <TraceRow key={t.id} t={t} open={open === t.id} onToggle={() => setOpen((o) => (o === t.id ? null : t.id))} onHover={onHover} onSelectNode={onSelectNode} />
-          ))}
-          {rows.length === 0 && <div className="px-4 py-10 text-center text-[12px] text-fg-subtle">No requests match this filter.</div>}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -140,30 +146,26 @@ function spanColor(s: Span) {
 const TraceRow = memo(function TraceRow({ t, open, onToggle, onHover, onSelectNode }: { t: Trace; open: boolean; onToggle: () => void; onHover: (t: Trace | null) => void; onSelectNode: (id: string) => void }) {
   const visible = t.spans.filter((s) => s.outcome !== 'bypassed');
   return (
-    <div className={clsx('border-b border-line/70 animate-row-in', open && 'bg-surface')} onMouseEnter={() => onHover(t)} onMouseLeave={() => onHover(null)}>
-      <button onClick={onToggle} className={clsx(COLS, 'w-full px-4 py-[7px] text-left hover:bg-surface')}>
+    <div className={clsx('animate-row-in', open && 'bg-white/[0.02]')} onMouseEnter={() => onHover(t)} onMouseLeave={() => onHover(null)}>
+      <button onClick={onToggle} className={clsx(COLS, 'w-full px-4 py-[7px] text-left hover:bg-white/[0.03]')}>
         <ChevronRight size={13} className={clsx('text-fg-subtle transition-transform', open && 'rotate-90')} />
-        <span className="font-mono text-[11px] tabular-nums text-fg-subtle">{fmtTime(t.ts)}</span>
-        <span className="truncate font-mono text-[11px] text-fg-muted">{t.id}</span>
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 rounded border border-line-strong px-1 font-mono text-2xs text-fg-subtle">{t.app}</span>
-          <span className="truncate text-[12px] text-fg-muted" title={t.prompt}>
-            {t.prompt}
-          </span>
+        <span className="text-[12px] tabular-nums text-fg-subtle">{fmtTime(t.ts).slice(0, 8)}</span>
+        <span className="truncate text-[12.5px] text-fg-muted" title={`${t.app} · ${t.prompt}`}>
+          {t.prompt}
         </span>
         <span className="flex items-center gap-1">
           <StatusBadge status={t.status} />
           {t.leakedThreat && <TriangleAlert size={13} className="text-security-amber" aria-label="Attack not detected" />}
         </span>
         <Waterfall spans={visible} scale={SCALE_MS} />
-        <span className="text-right font-mono text-[12px] tabular-nums text-fg">{fmtMs(t.latency)}</span>
-        <span className="text-right font-mono text-[11px] tabular-nums text-fg-muted">
+        <span className="text-right text-[12px] tabular-nums text-fg">{fmtMs(t.latency)}</span>
+        <span className="text-right text-[12px] tabular-nums text-fg-subtle">
           {t.status === 'blocked' ? '—' : t.status === 'cache_hit' ? <span className="text-efficiency">0 sent</span> : <>{fmtK(t.tokensIn)} → <span className="text-fg">{fmtK(t.tokensSent)}</span></>}
         </span>
-        <span className="text-right font-mono text-[11px] tabular-nums text-fg-muted">
+        <span className="text-right text-[12px] tabular-nums text-fg-subtle">
           {t.searchRaw === 0 || t.status === 'blocked' ? '—' : <>{t.searchRaw} → <span className={t.searchSent < t.searchRaw ? 'text-serp' : 'text-fg'}>{t.searchSent}</span></>}
         </span>
-        <span className={clsx('text-right font-mono text-[12px] tabular-nums', t.saved > 0.00005 ? 'text-efficiency' : 'text-fg-subtle')}>
+        <span className={clsx('text-right text-[12px] tabular-nums', t.saved > 0.00005 ? 'text-efficiency' : 'text-fg-subtle')}>
           {t.status === 'blocked' ? <span className="text-danger/80">threat</span> : t.saved > 0.00005 ? `+${fmtUsd(t.saved)}` : '—'}
         </span>
       </button>
@@ -178,14 +180,14 @@ function fmtK(n: number) {
 
 function Waterfall({ spans, scale }: { spans: Span[]; scale: number }) {
   return (
-    <div className="relative h-3.5 overflow-hidden rounded-sm bg-surface-2">
+    <div className="relative h-3 overflow-hidden rounded-full bg-white/[0.03]">
       {TICKS.slice(1, -1).map((tk) => (
-        <span key={tk} className="absolute inset-y-0 w-px bg-line" style={{ left: `${(tk / scale) * 100}%` }} />
+        <span key={tk} className="absolute inset-y-0 w-px bg-white/[0.04]" style={{ left: `${(tk / scale) * 100}%` }} />
       ))}
       {spans.map((s, i) => (
         <span
           key={i}
-          className="absolute top-[3px] h-2 rounded-[2px]"
+          className="absolute top-[3px] h-1.5 rounded-full"
           style={{ left: `${Math.min(100, (s.start / scale) * 100)}%`, width: `max(2px, ${(s.duration / scale) * 100}%)`, background: spanColor(s), opacity: s.outcome === 'miss' ? 0.45 : 0.9 }}
           title={`${s.name} · ${fmtMs(s.duration)}`}
         />
@@ -198,8 +200,8 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode: (id: string)
   const total = Math.max(t.latency, 1);
   return (
     <div className="grid gap-4 px-4 pb-4 pt-1 lg:grid-cols-[1fr_320px]">
-      <div className="overflow-hidden rounded-lg border border-line">
-        <div className="grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] gap-x-3 border-b border-line bg-surface-2 px-3 py-1.5 text-2xs font-medium uppercase tracking-[0.06em] text-fg-subtle">
+      <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+        <div className="grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] gap-x-3 border-b border-white/[0.06] bg-white/[0.025] px-3 py-1.5 text-[11px] text-fg-subtle">
           <span>Step</span>
           <span>Outcome</span>
           <span>Detail</span>
@@ -212,7 +214,7 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode: (id: string)
           const Icon = c.icon;
           const color = spanColor(s);
           return (
-            <div key={i} className={clsx('grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] items-center gap-x-3 border-b border-line/60 px-3 py-1.5 last:border-0', s.outcome === 'bypassed' && 'opacity-45')}>
+            <div key={i} className={clsx('grid grid-cols-[180px_72px_1fr_minmax(160px,0.9fr)_64px_72px] items-center gap-x-3 border-b border-white/[0.04] px-3 py-1.5 last:border-0', s.outcome === 'bypassed' && 'opacity-45')}>
               <button onClick={() => onSelectNode(s.nodeId)} className="flex min-w-0 items-center gap-2 text-left text-[12px] text-fg-muted hover:text-fg">
                 <span className="font-mono text-2xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
                 <Icon size={13} style={{ color }} />
@@ -233,10 +235,10 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode: (id: string)
                   </div>
                 )}
               </div>
-              <div className="relative h-2.5 rounded-sm bg-surface-2">
+              <div className="relative h-2.5 rounded-sm bg-white/[0.025]">
                 <span className="absolute inset-y-0 rounded-sm" style={{ left: `${(s.start / total) * 100}%`, width: `max(2px, ${(s.duration / total) * 100}%)`, background: color, opacity: s.outcome === 'bypassed' ? 0.3 : 0.9 }} />
               </div>
-              <span className="text-right font-mono text-[11px] tabular-nums text-fg-muted">{s.outcome === 'bypassed' ? '—' : fmtMs(s.duration)}</span>
+              <span className="text-right text-[12px] tabular-nums text-fg-subtle">{s.outcome === 'bypassed' ? '—' : fmtMs(s.duration)}</span>
               <span className={clsx('text-right font-mono text-[11px] tabular-nums', s.saved > 0.00005 ? 'text-efficiency' : 'text-fg-subtle')}>{s.saved > 0.00005 ? `+${fmtUsd(s.saved)}` : '—'}</span>
             </div>
           );
@@ -244,19 +246,19 @@ function TraceDetail({ t, onSelectNode }: { t: Trace; onSelectNode: (id: string)
       </div>
 
       <div className="space-y-3">
-        <div className="rounded-lg border border-line bg-surface-2 p-3">
-          <div className="mb-2 text-2xs font-medium uppercase tracking-[0.06em] text-fg-subtle">ROI</div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+          <div className="mb-2 text-[11px] text-fg-subtle">ROI</div>
           <dl className="space-y-1.5 font-mono text-[12px]">
             <Row k="Naive cost" v={t.status === 'blocked' ? '—' : fmtUsd(t.costBaseline)} />
             <Row k="Actual cost" v={t.status === 'blocked' ? '$0 (blocked)' : fmtUsd(t.costActual)} />
-            <div className="my-1 border-t border-line" />
+            <div className="my-1 border-t border-white/[0.06]" />
             <Row k="Saved" v={t.saved > 0 ? `${fmtUsd(t.saved)} (${Math.round((t.saved / Math.max(t.costBaseline, 1e-9)) * 100)}%)` : '—'} color={t.saved > 0 ? ACCENT.green.fg : undefined} />
             <Row k="Tokens" v={`${t.tokensIn.toLocaleString()} → ${t.tokensSent.toLocaleString()}`} />
             <Row k="SerpAPI calls" v={`${t.searchRaw} → ${t.searchSent}`} />
           </dl>
         </div>
-        <div className="rounded-lg border border-line bg-surface-2 p-3">
-          <div className="mb-2 text-2xs font-medium uppercase tracking-[0.06em] text-fg-subtle">Payload</div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+          <div className="mb-2 text-[11px] text-fg-subtle">Payload</div>
           <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-fg-muted">
             {JSON.stringify({ id: t.id, route: t.route, app: t.app, model: t.model, messages: [{ role: 'user', content: t.prompt }], threat: t.threat ?? null }, null, 2)}
           </pre>

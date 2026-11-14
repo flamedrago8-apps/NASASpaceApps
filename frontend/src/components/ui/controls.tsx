@@ -8,7 +8,7 @@ export function Toggle({ checked, onChange, color = '#EDEDEF', label }: { checke
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={clsx('relative h-[18px] w-8 shrink-0 rounded-full border transition-colors', checked ? 'border-transparent' : 'border-line-strong bg-surface-3')}
+      className={clsx('relative h-[18px] w-8 shrink-0 rounded-full border transition-colors', checked ? 'border-transparent' : 'border-[#2a2a31] bg-white/[0.07]')}
       style={checked ? { background: color } : undefined}
     >
       <span className={clsx('absolute top-[2px] h-3 w-3 rounded-full transition-all', checked ? 'left-[16px] bg-canvas' : 'left-[2px] bg-fg-subtle')} />
@@ -37,7 +37,7 @@ export function Select({ value, options, onChange }: { value: string; options: s
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-7 w-full rounded-md border border-line-strong bg-surface-2 px-2 font-mono text-[12px] text-fg outline-none focus:border-fg-subtle"
+      className="h-7 w-full rounded-lg border border-[#2a2a31] bg-white/[0.025] px-2 text-[12px] text-fg outline-none focus:border-fg-subtle"
     >
       {options.map((o) => (
         <option key={o} value={o}>
@@ -50,12 +50,12 @@ export function Select({ value, options, onChange }: { value: string; options: s
 
 export function Segmented({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
   return (
-    <div className="flex rounded-md border border-line-strong bg-surface-2 p-0.5">
+    <div className="flex rounded-lg border border-[#2a2a31] bg-white/[0.025] p-0.5">
       {options.map((o) => (
         <button
           key={o}
           onClick={() => onChange(o)}
-          className={clsx('flex-1 rounded px-2 py-0.5 font-mono text-[11px] transition-colors', value === o ? 'bg-surface-3 text-fg shadow-sm' : 'text-fg-subtle hover:text-fg-muted')}
+          className={clsx('flex-1 rounded px-2 py-0.5 text-[11.5px] transition-colors', value === o ? 'bg-white/[0.07] text-fg shadow-sm' : 'text-fg-subtle hover:text-fg-muted')}
         >
           {o}
         </button>
@@ -65,7 +65,7 @@ export function Segmented({ value, options, onChange }: { value: string; options
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded border border-line-strong bg-surface-2 px-1 font-mono text-2xs text-fg-muted">{children}</kbd>;
+  return <kbd className="rounded border border-[#2a2a31] bg-white/[0.025] px-1 font-mono text-2xs text-fg-muted">{children}</kbd>;
 }
 
 export function Sparkline({ data, color, height = 28, fill = true }: { data: number[]; color: string; height?: number; fill?: boolean }) {

@@ -1,8 +1,6 @@
 import {
   Background,
   BackgroundVariant,
-  Controls,
-  MarkerType,
   ReactFlow,
   addEdge,
   useReactFlow,
@@ -10,46 +8,37 @@ import {
   type OnEdgesChange,
   type OnNodesChange,
 } from '@xyflow/react';
-import { useCallback, useRef, type Dispatch, type DragEvent, type SetStateAction } from 'react';
+import { useCallback, type Dispatch, type DragEvent, type SetStateAction } from 'react';
 import { CATALOG } from '../../lib/catalog';
-import { edgeColor, makeNode, NODE_W } from '../../lib/pipeline';
+import { edgeColor, NODE_H, NODE_W } from '../../lib/pipeline';
 import type { AppNode, NodeKind, PacketEdge } from '../../types';
 import { LaneNodeView } from './LaneNodeView';
-import { NodePalette } from './NodePalette';
 import { PacketEdgeView } from './PacketEdgeView';
-import { PillarLegend } from './PillarLegend';
 import { PipelineNodeView } from './PipelineNodeView';
 
 const nodeTypes = { pipeline: PipelineNodeView, lane: LaneNodeView };
 const edgeTypes = { packet: PacketEdgeView };
+
+export const DND_MIME = 'application/x-conduit-node';
 
 type Props = {
   nodes: AppNode[];
   edges: PacketEdge[];
   onNodesChange: OnNodesChange<AppNode>;
   onEdgesChange: OnEdgesChange<PacketEdge>;
-  setNodes: Dispatch<SetStateAction<AppNode[]>>;
   setEdges: Dispatch<SetStateAction<PacketEdge[]>>;
   onSelect: (id: string | null) => void;
-  dimPillar: string | null;
-  onDimPillar: (p: string | null) => void;
-  onToast: (msg: string) => void;
+  onAddNode: (kind: NodeKind, x: number, y: number) => void;
 };
 
-export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, setNodes, setEdges, onSelect, dimPillar, onDimPillar, onToast }: Props) {
+export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, setEdges, onSelect, onAddNode }: Props) {
   const { screenToFlowPosition } = useReactFlow();
-  const counter = useRef(1);
 
   const onConnect = useCallback(
     (c: Connection) => {
       const src = nodes.find((n) => n.id === c.source);
       const kind = src?.type === 'pipeline' ? src.data.kind : 'llm';
-      setEdges((eds) =>
-        addEdge<PacketEdge>(
-          { ...c, id: `${c.source}->${c.target}`, type: 'packet', data: { color: edgeColor(kind) }, markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#3A3A44' } },
-          eds,
-        ),
-      );
+      setEdges((eds) => addEdge<PacketEdge>({ ...c, id: `${c.source}->${c.target}`, type: 'packet', data: { color: edgeColor(kind) } }, eds));
     },
     [nodes, setEdges],
   );
@@ -57,19 +46,16 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, setNode
   const onDrop = useCallback(
     (ev: DragEvent) => {
       ev.preventDefault();
-      const kind = ev.dataTransfer.getData('application/x-conduit-node') as NodeKind;
+      const kind = ev.dataTransfer.getData(DND_MIME) as NodeKind;
       if (!kind || !CATALOG[kind]) return;
-      const pos = screenToFlowPosition({ x: ev.clientX - NODE_W / 2, y: ev.clientY - 30 });
-      const id = `${kind}-${++counter.current}`;
-      setNodes((ns) => [...ns, makeNode(kind, id, pos.x, pos.y)]);
-      onSelect(id);
-      onToast(`Added ${CATALOG[kind].label} — wire it up to route traffic through it`);
+      const pos = screenToFlowPosition({ x: ev.clientX - NODE_W / 2, y: ev.clientY - NODE_H / 2 });
+      onAddNode(kind, pos.x, pos.y);
     },
-    [screenToFlowPosition, setNodes, onSelect, onToast],
+    [screenToFlowPosition, onAddNode],
   );
 
   return (
-    <div className="relative h-full w-full" onDragOver={(e) => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))} onDrop={onDrop}>
+    <div className="absolute inset-0" onDragOver={(e) => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))} onDrop={onDrop}>
       <ReactFlow<AppNode, PacketEdge>
         nodes={nodes}
         edges={edges}
@@ -82,18 +68,15 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, setNode
         onPaneClick={() => onSelect(null)}
         colorMode="dark"
         fitView
-        fitViewOptions={{ padding: { top: '64px', right: '28px', bottom: '28px', left: '28px' } }}
+        fitViewOptions={{ padding: { top: '72px', right: '40px', bottom: '84px', left: '40px' } }}
         minZoom={0.25}
         maxZoom={1.75}
         proOptions={{ hideAttribution: true }}
         deleteKeyCode={['Backspace', 'Delete']}
         defaultEdgeOptions={{ type: 'packet' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#26262D" />
-        <Controls position="bottom-left" showInteractive={false} />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.1} color="#24242a" />
       </ReactFlow>
-      <NodePalette />
-      <PillarLegend active={dimPillar} onToggle={onDimPillar} />
     </div>
   );
 }

@@ -1,15 +1,15 @@
-import { MarkerType } from '@xyflow/react';
 import { CATALOG } from './catalog';
 import { ACCENT, PILLAR } from './theme';
 import type { AppNode, LaneNode, NodeKind, PacketEdge, Pillar, PipelineNode } from '../types';
 
-export const NODE_W = 208;
+export const NODE_W = 196;
+export const NODE_H = 54;
 
 const LANE_X = 170;
-const LANE_W = 1080;
-const LANE_H = 196;
-const laneY: Record<Exclude<Pillar, 'core'>, number> = { security: 0, efficiency: 236, search: 472 };
-const rowY = (p: Exclude<Pillar, 'core'>) => laneY[p] + 52;
+const LANE_W = 1052;
+const LANE_H = 156;
+const laneY: Record<Exclude<Pillar, 'core'>, number> = { security: 0, efficiency: 204, search: 408 };
+const rowY = (p: Exclude<Pillar, 'core'>) => laneY[p] + 62;
 
 function lane(pillar: Exclude<Pillar, 'core'>): LaneNode {
   return {
@@ -37,13 +37,13 @@ export function makeNode(kind: NodeKind, id: string, x: number, y: number): Pipe
   };
 }
 
-const COL = [200, 470, 740, 1010];
+const COL = [210, 460, 710, 960];
 
 export const initialNodes: AppNode[] = [
   lane('security'),
   lane('efficiency'),
   lane('search'),
-  makeNode('ingress', 'ingress', -110, rowY('security')),
+  makeNode('ingress', 'ingress', -90, rowY('security')),
   makeNode('injection', 'injection', COL[0], rowY('security')),
   makeNode('jailbreak', 'jailbreak', COL[1], rowY('security')),
   makeNode('pii', 'pii', COL[2], rowY('security')),
@@ -55,8 +55,8 @@ export const initialNodes: AppNode[] = [
   makeNode('serpCache', 'serpCache', COL[1], rowY('search')),
   makeNode('queryOptimizer', 'queryOptimizer', COL[2], rowY('search')),
   makeNode('serpApi', 'serpApi', COL[3], rowY('search')),
-  makeNode('llm', 'llm', 1330, rowY('search')),
-  makeNode('response', 'response', 1330, rowY('efficiency')),
+  makeNode('llm', 'llm', 1290, rowY('search')),
+  makeNode('response', 'response', 1540, (rowY('efficiency') + rowY('search')) / 2),
 ];
 
 export function edgeColor(sourceKind: NodeKind): string {
@@ -73,7 +73,6 @@ function e(source: NodeKind, target: NodeKind, handle: 'out' | 'alt' = 'out', la
     targetHandle: 'in',
     type: 'packet',
     data: { color, label },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#3A3A44' },
   };
 }
 
@@ -84,14 +83,14 @@ export const initialEdges: PacketEdge[] = [
   e('jailbreak', 'pii'),
   e('jailbreak', 'block', 'alt', 'threat'),
   e('pii', 'exactCache'),
-  e('exactCache', 'semanticCache', 'out', 'miss'),
+  e('exactCache', 'semanticCache'),
   e('exactCache', 'response', 'alt', 'hit'),
-  e('semanticCache', 'compressor', 'out', 'miss'),
+  e('semanticCache', 'compressor'),
   e('semanticCache', 'response', 'alt', 'hit'),
   e('compressor', 'searchIntent'),
-  e('searchIntent', 'serpCache', 'out', 'search'),
+  e('searchIntent', 'serpCache'),
   e('searchIntent', 'llm', 'alt', 'no search'),
-  e('serpCache', 'queryOptimizer', 'out', 'miss'),
+  e('serpCache', 'queryOptimizer'),
   e('serpCache', 'llm', 'alt', 'hit'),
   e('queryOptimizer', 'serpApi'),
   e('serpApi', 'llm'),
