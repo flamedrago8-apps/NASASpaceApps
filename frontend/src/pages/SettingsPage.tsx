@@ -4,6 +4,7 @@ import { api, type ProviderId, type Settings, type SettingsPatch } from '../api'
 import { Toggle } from '../components/ui/controls';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Button, CopyButton, ErrorState, PageHeader, Spinner, TextInput } from '../components/ui/kit';
+import { ConnectionCard } from '../components/ConnectionCard';
 import { useToast } from '../state/toast';
 import { useAsync } from '../state/useAsync';
 
@@ -67,6 +68,10 @@ export function SettingsPage() {
           <Spinner label="Loading settings" />
         ) : (
           <div className="mx-auto max-w-[860px] space-y-8 p-4 pb-28 sm:p-6 sm:pb-28">
+            <Section title="Gateway connection" body="Point this dashboard at your running gateway server. Leave it disconnected to explore with demo data.">
+              <ConnectionCard />
+            </Section>
+
             <Section title="Model providers" body="Keys the gateway uses to call upstream models. They’re write-only — stored encrypted and never shown again.">
               {PROVIDERS.map((p) => (
                 <SecretRow key={p.id} name={p.name} hint={p.hint} placeholder={p.placeholder} state={s.providers[p.id]} value={keys[p.id]} onChange={(v) => setKeys((k) => ({ ...k, [p.id]: v }))} />
@@ -105,6 +110,22 @@ export function SettingsPage() {
             </Section>
 
             <Section title="Gateway">
+              <Row label="Python helpers" hint={s.helpers ? `Sidecar at ${s.helpers.url}. Steps fall back to built-in logic when a helper is offline.` : 'Not configured. Set PY_HELPERS_URL on the gateway (docker compose does this for you).'}>
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  {(
+                    [
+                      ['router', 'Model router'],
+                      ['compressor', 'LLMLingua'],
+                      ['planner', 'Query planner'],
+                    ] as const
+                  ).map(([k, l]) => (
+                    <span key={k} className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs">
+                      <span className={clsx('h-1.5 w-1.5 rounded-full', s.helpers?.[k] ? 'bg-efficiency' : 'bg-muted-foreground/50')} />
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              </Row>
               <Row label="Base URL" hint="Point OpenAI-compatible clients here.">
                 <div className="flex items-center gap-1 rounded-lg bg-muted py-0.5 pl-2.5 pr-0.5">
                   <code className="max-w-[260px] truncate font-mono text-[13px] text-muted-foreground">{s.gateway.baseUrl}</code>

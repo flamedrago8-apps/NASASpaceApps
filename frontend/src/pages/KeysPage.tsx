@@ -175,7 +175,7 @@ export function KeysPage() {
 
 const SNIPPETS = (base: string) => ({
   curl: `curl ${base}/chat/completions \\
-  -H "Authorization: Bearer $CONDUIT_API_KEY" \\
+  -H "Authorization: Bearer $TOKENOMICS_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "claude-sonnet-5-5",
@@ -186,7 +186,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="${base}",  # ← the only change
-    api_key=os.environ["CONDUIT_API_KEY"],
+    api_key=os.environ["TOKENOMICS_API_KEY"],
 )
 
 resp = client.chat.completions.create(
@@ -197,7 +197,7 @@ resp = client.chat.completions.create(
 
 const client = new OpenAI({
   baseURL: "${base}", // ← the only change
-  apiKey: process.env.CONDUIT_API_KEY,
+  apiKey: process.env.TOKENOMICS_API_KEY,
 });
 
 const resp = await client.chat.completions.create({

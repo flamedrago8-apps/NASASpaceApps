@@ -1,5 +1,5 @@
 import { Activity, BookOpen, ChevronsUpDown, Command as CommandIcon, FlaskConical, KeyRound, LayoutDashboard, LogOut, Settings, Siren, Workflow } from 'lucide-react';
-import { api, mockControls } from '../../api';
+import { api, mockControls, SOURCE } from '../../api';
 import { navigate } from '../../state/router';
 import { useTraces } from '../../state/traces';
 import { Avatar, AvatarFallback } from '../ui/avatar';
@@ -36,7 +36,7 @@ export function AppSidebar({ path, onOpenCommand }: { path: string; onOpenComman
     navigate(p);
     if (isMobile) setOpenMobile(false);
   };
-  const host = api.mode === 'mock' ? 'Demo mode' : (import.meta.env.VITE_API_URL as string) === '/' ? window.location.host : String(import.meta.env.VITE_API_URL ?? '').replace(/^https?:\/\//, '');
+  const host = SOURCE;
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -50,7 +50,7 @@ export function AppSidebar({ path, onOpenCommand }: { path: string; onOpenComman
                     <Logo />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Conduit</span>
+                    <span className="truncate font-semibold">Tokenomics</span>
                     <span className="truncate text-xs text-muted-foreground">prod-gateway</span>
                   </div>
                   <ChevronsUpDown className="ml-auto" />

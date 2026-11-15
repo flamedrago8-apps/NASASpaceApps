@@ -1,7 +1,7 @@
 /** Runs requests through the pipeline and records everything that happens. */
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import { createSimulatedProviders, createStores, mask, Metrics, runPipeline, sampleRequest, type Clock, type EngineResult, type GatewayRequest, type HoneypotSession, type Providers, type Trace } from '@conduit/core';
+import { createSimulatedProviders, createStores, mask, Metrics, runPipeline, sampleRequest, type Clock, type EngineResult, type GatewayRequest, type HoneypotSession, type Providers, type Trace } from '@tokenomics/core';
 import { env } from './env';
 import { createProviders } from './providers';
 import type { Store } from './store';
@@ -127,7 +127,7 @@ export class Gateway {
       }, (60_000 / env.demoTrafficPerMin) * (0.5 + Math.random()));
     };
     loop();
-    console.log(`[conduit] demo traffic on: ~${env.demoTrafficPerMin} simulated req/min`);
+    console.log(`[tokenomics] demo traffic on: ~${env.demoTrafficPerMin} simulated req/min`);
   }
 }
 

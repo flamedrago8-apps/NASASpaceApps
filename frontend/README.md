@@ -1,4 +1,4 @@
-# Conduit: AI Gateway & Search Optimizer dashboard
+# Tokenomics: AI Gateway & Search Optimizer dashboard
 
 Frontend for an AI gateway that sits between apps and LLM providers. It runs on
 Vite, React 18, TypeScript, **shadcn/ui + Tailwind CSS** (Radix primitives) and React Flow 12.
@@ -21,7 +21,7 @@ for the full contract).
 | --- | --- |
 | `#/demo` | Live demo (default page). A gateway console with attack/PII/cache/search presets, red attack alerts with confidence, the PII round trip side by side, honeypot sessions, the ticking savings counter and the Cost vs Speed slider. |
 | `#/overview` | KPIs, with-vs-without-gateway spend chart, savings by pillar, request volume, recent threats. Time ranges are 1h, 24h, 7d and 30d, and every chart has a table view. |
-| `#/pipeline` | Node canvas for the three pillars (Security, Efficiency, SerpAPI routing). Drafts autosave, Deploy takes an optional note, and History restores old versions. Click a node to open its settings, and open Logs at the bottom for live traces. `?node=<id>` opens a node directly. |
+| `#/pipeline` | One left-to-right flow (Ingestion → your tools → LLM API → Return). Switch tools on or off from the list, and drag a step (or use Earlier/Later) to reorder it. Click a step for a plain-English description, its key settings and one live stat. **Run a test request** dims the steps it skipped. Drafts autosave, Deploy publishes them, and History restores old versions. |
 | `#/traces` | Full trace explorer: filters, search, step-by-step span detail, cost per trace, paging back through older traces, and JSON export. `?status=blocked` and `?id=<traceId>` deep-link into it. |
 | `#/keys` | Create and revoke gateway API keys (the secret is shown once). Includes Python, Node and cURL quickstart snippets. |
 | `#/settings` | Provider keys (write-only), SerpAPI key, budget and alert webhook, logging and retention, gateway region. |
@@ -34,7 +34,7 @@ src/
   state/        router · toasts · shared live trace stream · useAsync data hook
   pages/        Overview · Pipeline · Traces · Keys · Settings
   components/   canvas/ (nodes, edges, floating controls) · inspector/ · trace/ · charts/ · ui/kit.tsx
-  lib/          catalog.ts (node types, config schema) · pipeline.ts (layout, doc <-> canvas) · simulator.ts (mock traffic) · stats.ts
+  lib/          catalog.ts (icons + plain-English copy) · explain.ts (trace → plain-English steps) · stats.ts
 ```
 
 To add a node type, add an entry to `CATALOG` in `src/lib/catalog.ts`. Its

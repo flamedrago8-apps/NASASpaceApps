@@ -1,0 +1,32 @@
+# Everything, wired together:  docker compose up --build
+#   gateway + dashboard → http://localhost:8787   (admin token: ADMIN_TOKEN below)
+#   Python helpers      → used by the gateway for routing, compression and search planning
+#   Ollama              → local model the helpers call (qwen3.5:4b, pulled on first start)
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes: [ollama:/root/.ollama]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3 && ollama pull qwen3.5:4b; wait"]
+
+  helpers:
+    build: { context: ., dockerfile: backend/helpers.Dockerfile }
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
+    volumes: [hf-cache:/root/.cache/huggingface] # LLMLingua model download, kept between runs
+    depends_on: [ollama]
+
+  gateway:
+    build: .
+    ports: ["8787:8787"]
+    environment:
+      PY_HELPERS_URL: http://helpers:8788
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me}
+      DEMO_TRAFFIC: ${DEMO_TRAFFIC:-1}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SERPAPI_API_KEY: ${SERPAPI_KEY:-}
+    volumes: [gateway-data:/data]
+    depends_on: [helpers]
+
+volumes: { ollama: {}, hf-cache: {}, gateway-data: {} }

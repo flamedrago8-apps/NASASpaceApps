@@ -1,0 +1,22 @@
+# One-click deploy on Render: Dashboard → New → Blueprint → pick this repo.
+# Serves the gateway API and the dashboard from one URL (the Dockerfile builds both).
+services:
+  - type: web
+    name: tokenomics-gateway
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: ADMIN_TOKEN
+        generateValue: true # copy it from the Render dashboard to log in
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEMO_TRAFFIC # simulated background traffic so the dashboard is never empty (never calls paid APIs)
+        value: "1"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SERPAPI_API_KEY
+        sync: false

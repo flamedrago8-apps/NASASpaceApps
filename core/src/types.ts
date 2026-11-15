@@ -174,6 +174,8 @@ export type Settings = {
   logging: { retentionDays: number; logPayloads: boolean; redactPii: boolean };
   gateway: { baseUrl: string; region: string };
   routing: { profile: Profile };
+  /** Python helper sidecar (Ollama router, LLMLingua, query planner), if configured. */
+  helpers?: { url: string; router: boolean; compressor: boolean; planner: boolean } | null;
 };
 
 export type SettingsPatch = {

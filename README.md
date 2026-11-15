@@ -1,4 +1,4 @@
-# Conduit: AI Gateway & Search Optimizer
+# Tokenomics: AI Gateway & Search Optimizer
 
 **[Live demo →](https://flamedrago8-apps.github.io/NASASpaceApps/)** (runs entirely in your browser on simulated upstreams)
 
@@ -6,7 +6,7 @@ An OpenAI-compatible gateway that sits between your apps and LLM providers. Chan
 
 ```js
 const openai = new OpenAI({
-  apiKey: process.env.CONDUIT_KEY,
+  apiKey: process.env.TOKENOMICS_KEY,
   baseURL: 'https://your-gateway.example.com/v1', // ← the only change
 });
 ```
@@ -22,13 +22,14 @@ const openai = new OpenAI({
 | 🌐 | Intent-based search bypass ("What is 5 + 5?" never costs a search credit) | `core/src/intent.ts` |
 | 🌐 | Query merging, in-flight de-duplication, 10-minute result cache, multi-engine aggregation | `serpCache` / `queryOptimizer` / `serpApi` nodes |
 | 🛠️ | One-line drop-in for any OpenAI SDK | API keys page quickstart |
-| 🛠️ | Drag-and-drop policy canvas. The graph *is* the policy: rewire an edge and traffic follows it. | Pipeline page, `core/src/engine.ts` |
+| 🛠️ | Pipeline page: one left-to-right flow of tools. Switch tools on/off and drag to reorder; the order *is* the policy the gateway runs. | Pipeline page, `core/src/defaults.ts` (`wireLinear`) |
 
 ## Layout
 
 ```
 core/      Shared TypeScript: pipeline engine, detectors, caches, router, metrics, types (no dependencies)
 backend/   Node gateway server (Hono): OpenAI-compatible proxy + dashboard API · see backend/README.md
+           + Python helpers (Ollama model router, LLMLingua-2 compression, search planner) served by helpers_server.py
 frontend/  Dashboard (React, Tailwind, React Flow) · see frontend/README.md and frontend/API.md
 ```
 
@@ -41,4 +42,19 @@ cd backend && npm install && npm run dev                                  # gate
 cd frontend && npm install && VITE_API_URL=http://localhost:8787 npm run dev   # dashboard on :5173
 ```
 
-Without provider keys, upstream calls are simulated and clearly marked. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `SERPAPI_API_KEY` to go live. To ship both as one container, use `docker build -t conduit .`.
+Without provider keys, upstream calls are simulated and clearly marked. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `SERPAPI_API_KEY` to go live.
+
+## Run everything locally
+
+```bash
+docker compose up --build    # gateway + dashboard on http://localhost:8787, Python helpers, Ollama
+```
+
+## Deploy the backend
+
+- **Render (one click):** New → Blueprint → pick this repo. Render runs the gateway alone, so the Python helper steps use their built-in fallbacks; for those use `docker compose` on a machine that can run Ollama. `render.yaml` builds the Dockerfile, which serves the gateway *and* the dashboard on one URL. Render generates `ADMIN_TOKEN`; copy it from the service's Environment tab.
+- **Anything else that runs containers:** `docker build -t tokenomics . && docker run -p 8787:8787 -e ADMIN_TOKEN=... tokenomics`.
+
+## Connect the dashboard to it
+
+On any copy of the dashboard (including the GitHub Pages one), go to **Settings → Gateway connection**, then paste the gateway URL and admin token and press **Test and connect**. Every page switches from demo data to the live gateway, with no rebuild. The connection is saved in that browser only. A Pages site is served over https, so the gateway must be https too (Render is).

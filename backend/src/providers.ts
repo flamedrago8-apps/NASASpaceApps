@@ -5,7 +5,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { createSimulatedProviders, estimateTokens, localEmbed, modelInfo, type ChatMessage, type ChatResult, type Clock, type Providers, type SearchResult } from '@conduit/core';
+import { createSimulatedProviders, estimateTokens, localEmbed, modelInfo, type ChatMessage, type ChatResult, type Clock, type Providers, type SearchResult } from '@tokenomics/core';
 import { env } from './env';
 import type { Store } from './store';
 
@@ -61,7 +61,22 @@ export function createProviders(store: Store, clock: Clock): Providers {
     return { text, inputTokens: r.usage?.prompt_tokens ?? estimateTokens(messages.map((m) => m.content).join('\n')), outputTokens: r.usage?.completion_tokens ?? estimateTokens(text), model: r.model ?? model };
   }
 
+  // ---- Python helpers sidecar ----
+  const helper = async <T,>(path: string, body: unknown, timeoutMs: number): Promise<T> => {
+    const res = await fetch(`${env.helpersUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) throw new Error(`helper ${path} ${res.status}`);
+    return (await res.json()) as T;
+  };
+  const helpers: Pick<Providers, 'classifyTier' | 'compress' | 'planQueries'> = env.helpersUrl
+    ? {
+        classifyTier: async (prompt) => (await helper<{ tier: 'fast' | 'advanced' }>('/route', { prompt }, 8000)).tier,
+        compress: async (text) => (await helper<{ compressed: string }>('/compress', { prompt: text }, 15000)).compressed,
+        planQueries: async (prompt) => (await helper<{ queries: { query: string }[] }>('/plan', { prompt }, 15000)).queries.map((q) => q.query),
+      }
+    : {};
+
   return {
+    ...helpers,
     async chat(model, messages, { maxTokens }) {
       const provider = modelInfo(model).provider;
       if (provider === 'anthropic') {

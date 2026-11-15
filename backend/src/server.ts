@@ -1,5 +1,5 @@
 /**
- * Conduit gateway server.
+ * Tokenomics gateway server.
  *
  *  - OpenAI-compatible proxy:  POST /v1/chat/completions, GET /v1/models   (auth: gateway API key)
  *  - Dashboard/admin API:      everything else under /v1                    (auth: ADMIN_TOKEN)
@@ -11,7 +11,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
-import { ATTACKS, MODELS, sampleRequest, SAMPLES, toRequest, upgradeDoc, type ChatMessage, type PipelineDoc, type ProviderId, type Range, type Settings, type SettingsPatch, type TestRequest, type TraceQuery } from '@conduit/core';
+import { ATTACKS, MODELS, sampleRequest, SAMPLES, toRequest, upgradeDoc, wireLinear, type ChatMessage, type PipelineDoc, type ProviderId, type Range, type Settings, type SettingsPatch, type TestRequest, type TraceQuery } from '@tokenomics/core';
 import { env } from './env';
 import { Gateway } from './gateway';
 import { sha256, Store } from './store';
@@ -21,9 +21,9 @@ const gw = new Gateway(store);
 
 if (!store.state.keys.length) {
   const { secret } = store.createKey('Default');
-  console.log(`\n[conduit] Created your first gateway API key (shown once):\n\n    ${secret}\n`);
+  console.log(`\n[tokenomics] Created your first gateway API key (shown once):\n\n    ${secret}\n`);
 }
-if (!env.adminToken) console.warn('[conduit] ADMIN_TOKEN is not set — the admin API is open. Set it before exposing this server.');
+if (!env.adminToken) console.warn('[tokenomics] ADMIN_TOKEN is not set — the admin API is open. Set it before exposing this server.');
 
 const app = new Hono();
 
@@ -38,7 +38,7 @@ app.use(
   }),
 );
 
-app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime() }));
+app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime(), helpers: helperStatus }));
 
 // ---- OpenAI-compatible gateway ---------------------------------------------------------------
 
@@ -114,7 +114,8 @@ admin.put('/pipelines/:id/draft', async (c) => {
   const doc = (await c.req.json()) as PipelineDoc;
   if (!Array.isArray(doc.nodes) || !Array.isArray(doc.edges) || !doc.nodes.some((n) => n.kind === 'ingress')) return c.json({ error: { message: 'A pipeline needs nodes, edges and an Ingress node.' } }, 400);
   const p = store.state.pipeline;
-  store.state.pipeline = upgradeDoc({ ...p, nodes: doc.nodes, edges: doc.edges, hasDraft: true, updatedAt: new Date().toISOString() });
+  // The tool order is the source of truth; the server derives the edges itself.
+  store.state.pipeline = wireLinear(upgradeDoc({ ...p, nodes: doc.nodes, edges: doc.edges, hasDraft: true, updatedAt: new Date().toISOString() }));
   store.save();
   return c.json(store.state.pipeline);
 });
@@ -208,6 +209,20 @@ admin.delete('/keys/:id', (c) => {
 });
 
 const PROVIDERS: ProviderId[] = ['anthropic', 'openai', 'meta', 'serpapi'];
+
+// Poll the Python helpers sidecar so the dashboard can show what's live.
+let helperStatus: Settings['helpers'] = null;
+async function pollHelpers() {
+  if (!env.helpersUrl) return;
+  try {
+    const h = (await fetch(`${env.helpersUrl}/health`, { signal: AbortSignal.timeout(5000) }).then((r) => r.json())) as { router: boolean; compressor: boolean; planner: boolean };
+    helperStatus = { url: env.helpersUrl, router: !!h.router, compressor: !!h.compressor, planner: !!h.planner };
+  } catch {
+    helperStatus = { url: env.helpersUrl, router: false, compressor: false, planner: false };
+  }
+}
+void pollHelpers();
+setInterval(pollHelpers, 30_000).unref();
 function settings(c: Context): Settings {
   const providers = Object.fromEntries(
     PROVIDERS.map((p) => {
@@ -216,7 +231,7 @@ function settings(c: Context): Settings {
     }),
   ) as Settings['providers'];
   const s = store.state.settings;
-  return { ...s, providers, gateway: { ...s.gateway, baseUrl: env.publicBaseUrl || `${new URL(c.req.url).origin}/v1` } };
+  return { ...s, providers, helpers: helperStatus, gateway: { ...s.gateway, baseUrl: env.publicBaseUrl || `${new URL(c.req.url).origin}/v1` } };
 }
 admin.get('/settings', (c) => c.json(settings(c)));
 admin.patch('/settings', async (c) => {
@@ -251,7 +266,7 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const)
 
 serve({ fetch: app.fetch, port: env.port, hostname: env.host }, (i) => {
   const keys = (['anthropic', 'openai', 'meta', 'serpapi'] as ProviderId[]).map((p) => `${p}:${store.providerKey(p).key ? 'live' : 'simulated'}`).join(' ');
-  console.log(`[conduit] gateway listening on http://${env.host}:${i.port} · providers ${keys}`);
+  console.log(`[tokenomics] gateway listening on http://${env.host}:${i.port} · providers ${keys}`);
 });
 
 export { app, sampleRequest };

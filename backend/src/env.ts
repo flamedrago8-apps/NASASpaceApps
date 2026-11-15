@@ -24,8 +24,10 @@ export const env = {
     anthropic: process.env.ANTHROPIC_API_KEY ?? '',
     openai: process.env.OPENAI_API_KEY ?? '',
     meta: process.env.LLAMA_API_KEY ?? '',
-    serpapi: process.env.SERPAPI_API_KEY ?? '',
+    serpapi: process.env.SERPAPI_API_KEY ?? process.env.SERPAPI_KEY ?? '',
   },
   llama: { baseUrl: process.env.LLAMA_BASE_URL ?? 'https://api.groq.com/openai/v1', model: process.env.LLAMA_MODEL ?? 'llama-3.3-70b-versatile' },
+  /** Python helpers sidecar (backend/helpers_server.py). Unset = built-in logic only. */
+  helpersUrl: (process.env.PY_HELPERS_URL ?? '').replace(/\/$/, ''),
   honeypot: { baseUrl: process.env.HONEYPOT_BASE_URL ?? '', apiKey: process.env.HONEYPOT_API_KEY ?? '', model: process.env.HONEYPOT_MODEL ?? '' },
 };

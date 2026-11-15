@@ -1,4 +1,4 @@
-import { DEMO_PRESETS } from '@conduit/core';
+import { DEMO_PRESETS } from '@tokenomics/core';
 import { Gauge, Play, ShieldAlert } from 'lucide-react';
 import { useEffect } from 'react';
 import { api, PIPELINE_ID } from '../../api';

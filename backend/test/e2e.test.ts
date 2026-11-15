@@ -1,6 +1,6 @@
 /**
  * End-to-end: starts nothing itself — run against a live server.
- *   GATEWAY_URL=http://localhost:8787 GATEWAY_KEY=cdt_live_... npm test
+ *   GATEWAY_URL=http://localhost:8787 GATEWAY_KEY=tok_live_... npm test
  * Uses the official OpenAI SDK as the client to prove the one-line baseURL swap works.
  */
 import { test } from 'node:test';

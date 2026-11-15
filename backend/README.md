@@ -1,4 +1,4 @@
-# Conduit gateway (backend)
+# Tokenomics gateway (backend)
 
 An OpenAI-compatible AI gateway. Point any OpenAI SDK at it by changing **one line** (`baseURL`), and every request runs through the policy graph you drew in the dashboard:
 
@@ -23,7 +23,7 @@ On first start it prints your first gateway API key (shown once). Then:
 ```js
 import OpenAI from 'openai';
 const openai = new OpenAI({
-  apiKey: process.env.CONDUIT_KEY,           // cdt_live_...
+  apiKey: process.env.TOKENOMICS_KEY,           // tok_live_...
   baseURL: 'http://localhost:8787/v1',       // ← the only change
 });
 await openai.chat.completions.create({ model: 'claude-sonnet-5-5', messages: [{ role: 'user', content: 'Hi' }] });
@@ -37,6 +37,26 @@ To use the dashboard against this server, build it with `VITE_API_URL=http://loc
 
 Any provider without a key is **simulated**: templated answers and fake search results with realistic latency. Traces are marked `simulated: true`, and the startup log says which providers are live. Add keys as environment variables or under **Settings** in the dashboard. Keys saved from the dashboard are encrypted at rest with AES-256-GCM.
 
+## Python helpers (team modules)
+
+`modelRouting.py`, `promptCompressing.py` and `serpAPI_websearching.py` are served over HTTP by `helpers_server.py` (FastAPI). When `PY_HELPERS_URL` is set, the gateway uses them:
+
+| Pipeline step | Helper | What it adds |
+| --- | --- | --- |
+| LLM API, in **Balanced** mode | `return_prompt_level` (Ollama qwen3.5:4b) | Prompts classed "fast" go to the small model in the family; "advanced" keep the requested model |
+| Token Compressor | `optimize_prompt` (LLMLingua-2) | Compresses long context (older turns, pasted documents) |
+| Query Optimizer | `breakdown_prompt` (Ollama) | Plans the search queries instead of the built-in keyword planner |
+
+If a helper is offline or errors, that step falls back to the built-in TypeScript logic, and the trace says so ("planner unavailable, used built-in"). **Settings → Gateway → Python helpers** shows which helpers are live.
+
+```bash
+pip install -e .                                               # from the repo root
+uvicorn helpers_server:app --app-dir backend --port 8788       # needs `ollama serve` with qwen3.5:4b pulled
+PY_HELPERS_URL=http://localhost:8788 npm run dev               # in backend/
+```
+
+Or start everything at once (gateway, dashboard, helpers and Ollama): `docker compose up --build` from the repo root.
+
 ## Configuration
 
 | Variable | Default | |
@@ -46,11 +66,12 @@ Any provider without a key is **simulated**: templated answers and fake search r
 | `ADMIN_TOKEN` | *(unset = open)* | Protects the dashboard API. **Set this before exposing the server.** |
 | `CORS_ORIGIN` | *(reflect any)* | Comma-separated dashboard origins, e.g. `https://flamedrago8-apps.github.io` |
 | `SECRET_KEY` | *(generated into DATA_DIR)* | Encrypts provider keys saved from the dashboard |
-| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SERPAPI_API_KEY` | | Provider keys (override dashboard-saved ones) |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SERPAPI_API_KEY` (or `SERPAPI_KEY`) | | Provider keys (override dashboard-saved ones) |
 | `LLAMA_API_KEY`, `LLAMA_BASE_URL`, `LLAMA_MODEL` | Groq | Any OpenAI-compatible Llama host |
 | `HONEYPOT_BASE_URL`, `HONEYPOT_API_KEY`, `HONEYPOT_MODEL` | *(local decoy)* | A cheap, isolated model for the honeypot. Without one, a zero-cost local decoy is used. |
 | `EMBEDDINGS` | `local` | `local` (sub-ms, lexical + synonyms) or `openai` (`text-embedding-3-small`; better recall, ~100–300 ms per request) |
 | `DEMO_TRAFFIC`, `DEMO_TRAFFIC_PER_MIN` | off, 40 | Simulated background traffic for demos. It always uses simulated providers and its own caches, so it never spends money or pollutes real caches. |
+| `PY_HELPERS_URL` | | Python helpers sidecar, e.g. `http://localhost:8788` |
 | `STATIC_DIR` | | Serve the built dashboard from the same origin |
 | `PUBLIC_BASE_URL` | request origin | Base URL shown in the dashboard's quickstart |
 
@@ -65,7 +86,7 @@ Gateway responses carry the headers `x-gateway-trace-id`, `x-gateway-status` (`o
 
 ```bash
 npm test                                   # engine tests (core) — no server needed
-GATEWAY_KEY=cdt_live_... npm test          # + end-to-end tests against a running server, via the OpenAI SDK
+GATEWAY_KEY=tok_live_... npm test          # + end-to-end tests against a running server, via the OpenAI SDK
 ```
 
 ## Deploy
@@ -73,8 +94,8 @@ GATEWAY_KEY=cdt_live_... npm test          # + end-to-end tests against a runnin
 The root [`Dockerfile`](../Dockerfile) builds a single container serving both the gateway and the dashboard:
 
 ```bash
-docker build -t conduit .
-docker run -p 8787:8787 -v conduit-data:/data -e ADMIN_TOKEN=change-me -e ANTHROPIC_API_KEY=... conduit
+docker build -t tokenomics .
+docker run -p 8787:8787 -v tokenomics-data:/data -e ADMIN_TOKEN=change-me -e ANTHROPIC_API_KEY=... tokenomics
 ```
 
 It runs anywhere that runs a container: Fly.io, Render, Railway, Cloud Run, a VM. Mount `/data` on a persistent volume.
