@@ -38,7 +38,7 @@ app.use(
   }),
 );
 
-app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime() }));
+app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime(), helpers: helperStatus }));
 
 // ---- OpenAI-compatible gateway ---------------------------------------------------------------
 
@@ -209,6 +209,20 @@ admin.delete('/keys/:id', (c) => {
 });
 
 const PROVIDERS: ProviderId[] = ['anthropic', 'openai', 'meta', 'serpapi'];
+
+// Poll the Python helpers sidecar so the dashboard can show what's live.
+let helperStatus: Settings['helpers'] = null;
+async function pollHelpers() {
+  if (!env.helpersUrl) return;
+  try {
+    const h = (await fetch(`${env.helpersUrl}/health`, { signal: AbortSignal.timeout(5000) }).then((r) => r.json())) as { router: boolean; compressor: boolean; planner: boolean };
+    helperStatus = { url: env.helpersUrl, router: !!h.router, compressor: !!h.compressor, planner: !!h.planner };
+  } catch {
+    helperStatus = { url: env.helpersUrl, router: false, compressor: false, planner: false };
+  }
+}
+void pollHelpers();
+setInterval(pollHelpers, 30_000).unref();
 function settings(c: Context): Settings {
   const providers = Object.fromEntries(
     PROVIDERS.map((p) => {
@@ -217,7 +231,7 @@ function settings(c: Context): Settings {
     }),
   ) as Settings['providers'];
   const s = store.state.settings;
-  return { ...s, providers, gateway: { ...s.gateway, baseUrl: env.publicBaseUrl || `${new URL(c.req.url).origin}/v1` } };
+  return { ...s, providers, helpers: helperStatus, gateway: { ...s.gateway, baseUrl: env.publicBaseUrl || `${new URL(c.req.url).origin}/v1` } };
 }
 admin.get('/settings', (c) => c.json(settings(c)));
 admin.patch('/settings', async (c) => {

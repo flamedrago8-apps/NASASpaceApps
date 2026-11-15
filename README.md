@@ -29,6 +29,7 @@ const openai = new OpenAI({
 ```
 core/      Shared TypeScript: pipeline engine, detectors, caches, router, metrics, types (no dependencies)
 backend/   Node gateway server (Hono): OpenAI-compatible proxy + dashboard API · see backend/README.md
+           + Python helpers (Ollama model router, LLMLingua-2 compression, search planner) served by helpers_server.py
 frontend/  Dashboard (React, Tailwind, React Flow) · see frontend/README.md and frontend/API.md
 ```
 
@@ -43,9 +44,15 @@ cd frontend && npm install && VITE_API_URL=http://localhost:8787 npm run dev   #
 
 Without provider keys, upstream calls are simulated and clearly marked. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `SERPAPI_API_KEY` to go live.
 
+## Run everything locally
+
+```bash
+docker compose up --build    # gateway + dashboard on http://localhost:8787, Python helpers, Ollama
+```
+
 ## Deploy the backend
 
-- **Render (one click):** New → Blueprint → pick this repo. `render.yaml` builds the Dockerfile, which serves the gateway *and* the dashboard on one URL. Render generates `ADMIN_TOKEN`; copy it from the service's Environment tab.
+- **Render (one click):** New → Blueprint → pick this repo. Render runs the gateway alone, so the Python helper steps use their built-in fallbacks; for those use `docker compose` on a machine that can run Ollama. `render.yaml` builds the Dockerfile, which serves the gateway *and* the dashboard on one URL. Render generates `ADMIN_TOKEN`; copy it from the service's Environment tab.
 - **Anything else that runs containers:** `docker build -t conduit . && docker run -p 8787:8787 -e ADMIN_TOKEN=... conduit`.
 
 ## Connect the dashboard to it

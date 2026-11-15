@@ -110,6 +110,22 @@ export function SettingsPage() {
             </Section>
 
             <Section title="Gateway">
+              <Row label="Python helpers" hint={s.helpers ? `Sidecar at ${s.helpers.url}. Steps fall back to built-in logic when a helper is offline.` : 'Not configured. Set PY_HELPERS_URL on the gateway (docker compose does this for you).'}>
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  {(
+                    [
+                      ['router', 'Model router'],
+                      ['compressor', 'LLMLingua'],
+                      ['planner', 'Query planner'],
+                    ] as const
+                  ).map(([k, l]) => (
+                    <span key={k} className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs">
+                      <span className={clsx('h-1.5 w-1.5 rounded-full', s.helpers?.[k] ? 'bg-efficiency' : 'bg-muted-foreground/50')} />
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              </Row>
               <Row label="Base URL" hint="Point OpenAI-compatible clients here.">
                 <div className="flex items-center gap-1 rounded-lg bg-muted py-0.5 pl-2.5 pr-0.5">
                   <code className="max-w-[260px] truncate font-mono text-[13px] text-muted-foreground">{s.gateway.baseUrl}</code>

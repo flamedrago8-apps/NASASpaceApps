@@ -5,7 +5,7 @@ from ollama import (
 )
 
 # Use your own API key you bummmmmm
-scraper = serpapi.Client(api_key=os.environ["SERPAPI_KEY"])
+scraper = serpapi.Client(api_key=os.environ.get("SERPAPI_KEY", ""))
 
 def breakdown_prompt(prompt: str):
     """
@@ -55,4 +55,6 @@ def preform_searches(breakdown: dict):
 
     return links
 
-print(preform_searches(breakdown_prompt("I need to research about NASA.")))
+if __name__ == "__main__":
+    # Manual check: runs live searches, so only when executed directly (not on import).
+    print(preform_searches(breakdown_prompt("I need to research about NASA.")))

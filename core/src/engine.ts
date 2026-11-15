@@ -37,6 +37,10 @@ export interface Providers {
   embed(text: string): Promise<{ vector: number[]; remote: boolean }>;
   search(query: string, engine: string, num: number): Promise<{ results: SearchResult[]; simulated?: boolean }>;
   honeypot(messages: ChatMessage[], persona: string): Promise<ChatResult>;
+  /** Optional ML helpers (the Python sidecar). The engine falls back to built-in logic when absent or failing. */
+  classifyTier?(prompt: string): Promise<'fast' | 'advanced'>;
+  compress?(text: string): Promise<string>;
+  planQueries?(prompt: string): Promise<string[]>;
 }
 
 export interface Clock {
@@ -212,13 +216,31 @@ const H: Record<NodeKind, Handler> = {
     return { outcome: 'hit', detail: `${pct}% semantic match · “${trim(near.entry.text, 48)}”`, branch: 'alt' };
   },
 
-  async compressor(s, cfg) {
+  async compressor(s, cfg, ctx) {
     const r = compressMessages(s.messages, Number(cfg.keepTurns), String(cfg.strategy));
     s.messages = r.messages;
+    let via = '';
+    // LLMLingua-2 (Python sidecar) on long context: older turns, and pasted documents in the latest message.
+    if (ctx.providers.compress) {
+      const lastU = s.messages.map((m) => m.role).lastIndexOf('user');
+      try {
+        const out = await Promise.all(
+          s.messages.map(async (m, i) => (m.role !== 'system' && (i !== lastU || m.content.length > 1200) && m.content.length > 400 ? { ...m, content: await ctx.providers.compress!(m.content) } : m)),
+        );
+        const after = out.reduce((n, m) => n + estimateTokens(m.content), 0);
+        if (after < r.after) {
+          s.messages = out;
+          r.after = after;
+          via = ' · LLMLingua-2';
+        }
+      } catch {
+        via = ' · LLMLingua unavailable, used built-in';
+      }
+    }
     const saved = r.before - r.after;
     const pin = modelInfo(s.routedModel).in / 1e6;
-    if (saved <= 0) return { outcome: 'pass', detail: `${r.before.toLocaleString()} tok · nothing to prune` };
-    return { outcome: 'pass', detail: `${r.before.toLocaleString()} → ${r.after.toLocaleString()} tok (−${Math.round((saved / r.before) * 100)}%)`, saved: saved * pin, tokensSaved: saved };
+    if (saved <= 0) return { outcome: 'pass', detail: `${r.before.toLocaleString()} tok · nothing to prune${via}` };
+    return { outcome: 'pass', detail: `${r.before.toLocaleString()} → ${r.after.toLocaleString()} tok (−${Math.round((saved / r.before) * 100)}%)${via}`, saved: saved * pin, tokensSaved: saved };
   },
 
   async searchIntent(s, cfg, ctx) {
@@ -267,11 +289,23 @@ const H: Record<NodeKind, Handler> = {
     const raw = s.queries.length ? s.queries : s.naiveQueries;
     const max = Math.min(Number(cfg.maxQueries), PROFILE_SEARCH[ctx.profile].maxQueries);
     s.queries = plannedQueries(lastUser(s.req.messages), max);
+    let via = '';
+    if (ctx.providers.planQueries) {
+      try {
+        const planned = (await ctx.providers.planQueries(lastUser(s.req.messages))).filter(Boolean);
+        if (planned.length) {
+          s.queries = planned.slice(0, max);
+          via = ' · planned by local LLM';
+        }
+      } catch {
+        via = ' · planner unavailable, used built-in';
+      }
+    }
     const pin = modelInfo(s.req.model).in / 1e6;
     const avoided = Math.max(0, s.naiveCalls - s.queries.length);
     return {
       outcome: 'pass',
-      detail: `${s.naiveCalls} naive → ${s.queries.length} quer${s.queries.length > 1 ? 'ies' : 'y'}${avoided ? ` (−${avoided})` : ''}`,
+      detail: `${s.naiveCalls} naive → ${s.queries.length} quer${s.queries.length > 1 ? 'ies' : 'y'}${avoided ? ` (−${avoided})` : ''}${via}`,
       saved: avoided * (SERP_COST + SERP_CTX_TOKENS * pin),
       meta: [...raw.filter((q) => !s.queries.includes(q)).map((q) => `− ${q}`), ...s.queries.map((q) => `+ ${q}`)],
     };
@@ -330,7 +364,18 @@ const H: Record<NodeKind, Handler> = {
   },
 
   async llm(s, cfg, ctx) {
-    const routed = routeModel(s.req.model, ctx.profile);
+    let routed = routeModel(s.req.model, ctx.profile);
+    let tierNote = '';
+    // Balanced: let the prompt-difficulty router (Python sidecar) send simple prompts to the small model.
+    if (ctx.profile === 'balanced' && ctx.providers.classifyTier) {
+      try {
+        const tier = await ctx.providers.classifyTier(lastUser(s.messages));
+        if (tier === 'fast') routed = routeModel(s.req.model, 'eco');
+        tierNote = ` · router: ${tier}`;
+      } catch {
+        tierNote = ' · router unavailable';
+      }
+    }
     s.routedModel = routed;
     const msgs = [...s.messages];
     if (s.results.length) {
@@ -364,7 +409,7 @@ const H: Record<NodeKind, Handler> = {
     s.tokensSent = r.inputTokens;
     // Savings from routing to a cheaper model (negative in Performance mode: you're paying for quality).
     const routingSaved = tokenCost(s.req.model, r.inputTokens, r.outputTokens) - tokenCost(s.routedModel, r.inputTokens, r.outputTokens);
-    const why = routed !== s.req.model ? ` (${ctx.profile}: routed from ${s.req.model})` : '';
+    const why = (routed !== s.req.model ? ` (${ctx.profile}: routed from ${s.req.model})` : '') + tierNote;
     return { outcome: 'called', detail: `${s.routedModel}${why} · ${r.inputTokens.toLocaleString()} in / ${r.outputTokens} out${r.simulated ? ' · simulated' : ''}${note}`, saved: routingSaved };
   },
 

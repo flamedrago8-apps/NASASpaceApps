@@ -37,6 +37,26 @@ To use the dashboard against this server, build it with `VITE_API_URL=http://loc
 
 Any provider without a key is **simulated**: templated answers and fake search results with realistic latency. Traces are marked `simulated: true`, and the startup log says which providers are live. Add keys as environment variables or under **Settings** in the dashboard. Keys saved from the dashboard are encrypted at rest with AES-256-GCM.
 
+## Python helpers (team modules)
+
+`modelRouting.py`, `promptCompressing.py` and `serpAPI_websearching.py` are served over HTTP by `helpers_server.py` (FastAPI). When `PY_HELPERS_URL` is set, the gateway uses them:
+
+| Pipeline step | Helper | What it adds |
+| --- | --- | --- |
+| LLM API, in **Balanced** mode | `return_prompt_level` (Ollama qwen3.5:4b) | Prompts classed "fast" go to the small model in the family; "advanced" keep the requested model |
+| Token Compressor | `optimize_prompt` (LLMLingua-2) | Compresses long context (older turns, pasted documents) |
+| Query Optimizer | `breakdown_prompt` (Ollama) | Plans the search queries instead of the built-in keyword planner |
+
+If a helper is offline or errors, that step falls back to the built-in TypeScript logic, and the trace says so ("planner unavailable, used built-in"). **Settings → Gateway → Python helpers** shows which helpers are live.
+
+```bash
+pip install -e .                                               # from the repo root
+uvicorn helpers_server:app --app-dir backend --port 8788       # needs `ollama serve` with qwen3.5:4b pulled
+PY_HELPERS_URL=http://localhost:8788 npm run dev               # in backend/
+```
+
+Or start everything at once (gateway, dashboard, helpers and Ollama): `docker compose up --build` from the repo root.
+
 ## Configuration
 
 | Variable | Default | |
@@ -46,11 +66,12 @@ Any provider without a key is **simulated**: templated answers and fake search r
 | `ADMIN_TOKEN` | *(unset = open)* | Protects the dashboard API. **Set this before exposing the server.** |
 | `CORS_ORIGIN` | *(reflect any)* | Comma-separated dashboard origins, e.g. `https://flamedrago8-apps.github.io` |
 | `SECRET_KEY` | *(generated into DATA_DIR)* | Encrypts provider keys saved from the dashboard |
-| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SERPAPI_API_KEY` | | Provider keys (override dashboard-saved ones) |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SERPAPI_API_KEY` (or `SERPAPI_KEY`) | | Provider keys (override dashboard-saved ones) |
 | `LLAMA_API_KEY`, `LLAMA_BASE_URL`, `LLAMA_MODEL` | Groq | Any OpenAI-compatible Llama host |
 | `HONEYPOT_BASE_URL`, `HONEYPOT_API_KEY`, `HONEYPOT_MODEL` | *(local decoy)* | A cheap, isolated model for the honeypot. Without one, a zero-cost local decoy is used. |
 | `EMBEDDINGS` | `local` | `local` (sub-ms, lexical + synonyms) or `openai` (`text-embedding-3-small`; better recall, ~100–300 ms per request) |
 | `DEMO_TRAFFIC`, `DEMO_TRAFFIC_PER_MIN` | off, 40 | Simulated background traffic for demos. It always uses simulated providers and its own caches, so it never spends money or pollutes real caches. |
+| `PY_HELPERS_URL` | | Python helpers sidecar, e.g. `http://localhost:8788` |
 | `STATIC_DIR` | | Serve the built dashboard from the same origin |
 | `PUBLIC_BASE_URL` | request origin | Base URL shown in the dashboard's quickstart |
 

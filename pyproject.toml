@@ -10,8 +10,11 @@ requires-python = ">=3.10"
 dependencies = [
     "llmlingua>=0.2.2",
     "ollama>=0.4.0",
+    "serpapi>=0.1.5",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 
 [tool.setuptools]
 package-dir = {"" = "backend"}
-py-modules = ["modelRouting", "promptCompressing"]
+py-modules = ["modelRouting", "promptCompressing", "serpAPI_websearching", "helpers_server"]

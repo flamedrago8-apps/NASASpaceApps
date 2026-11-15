@@ -205,7 +205,7 @@ export const NODE_SPECS: Record<NodeKind, NodeSpec> = {
     accent: 'cyan',
     description: 'Live web search, billed per call. In Performance mode it aggregates multiple engines and de-duplicates results by URL.',
     fields: [
-      { key: 'engine', label: 'Primary engine', type: 'select', options: ['google', 'bing', 'duckduckgo'] },
+      { key: 'engine', label: 'Primary engine', type: 'select', options: ['google', 'bing', 'brave', 'duckduckgo'] },
       { key: 'num', label: 'Results per query', type: 'slider', min: 3, max: 20, step: 1 },
     ],
     defaults: { engine: 'google', num: 6 },
