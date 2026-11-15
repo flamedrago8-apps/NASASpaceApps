@@ -4,6 +4,7 @@ from ollama import (
     ChatResponse
 )
 
+
 # Use your own API key you bummmmmm
 scraper = serpapi.Client(api_key=os.environ["SERPAPI_KEY"])
 
