@@ -41,6 +41,7 @@ export interface Providers {
   classifyTier?(prompt: string): Promise<'fast' | 'advanced'>;
   compress?(text: string): Promise<string>;
   planQueries?(prompt: string): Promise<string[]>;
+  checkPerplexity?(prompt: string): Promise<number>;
 }
 
 export interface Clock {
@@ -125,9 +126,23 @@ const H: Record<NodeKind, Handler> = {
     return { outcome: 'pass', detail: `${s.req.app} · ${s.tokensInNaive.toLocaleString()} tok · ${s.req.model}` };
   },
 
-  async injection(s, cfg) {
+  async injection(s, cfg, ctx) {
     const text = promptText(s.messages, cfg.scanTools ? ['user', 'tool', 'assistant'] : ['user']);
-    const d = detectInjection(text);
+    let d = detectInjection(text);
+    if (ctx.providers.checkPerplexity) {
+      try {
+        const perp = await ctx.providers.checkPerplexity(text);
+        const perpTh = Number(cfg.perplexityThreshold ?? 450);
+        if (perp >= perpTh) {
+          d = {
+            score: Math.max(d.score, 0.95),
+            signals: [...d.signals, `high perplexity (${perp.toFixed(1)} ≥ ${perpTh})`],
+          };
+        }
+      } catch {
+        /* sidecar unavailable or timeout; fall back to rule-based */
+      }
+    }
     return securityVerdict(s, cfg, d, 'prompt_injection', 'Prompt injection');
   },
 

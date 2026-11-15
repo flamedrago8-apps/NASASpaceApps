@@ -162,7 +162,7 @@ async def perform_searches(breakdown: dict) -> list[str]:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "router": True, "compressor": True, "planner": True}
+    return {"status": "ok", "router": True, "compressor": True, "planner": True, "perplexity": True}
 
 
 @app.post("/perplexity")
@@ -171,7 +171,7 @@ async def perplexity(request: PromptRequest):
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
     score = await asyncio.to_thread(get_perplexity_score, request.prompt)
-    return {"perplexity": score}
+    return {"perplexity": score, "threshold": 450.0, "blocked": score >= 450.0}
 
 
 @app.post("/route")

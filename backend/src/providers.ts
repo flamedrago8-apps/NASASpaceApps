@@ -67,11 +67,12 @@ export function createProviders(store: Store, clock: Clock): Providers {
     if (!res.ok) throw new Error(`helper ${path} ${res.status}`);
     return (await res.json()) as T;
   };
-  const helpers: Pick<Providers, 'classifyTier' | 'compress' | 'planQueries'> = env.helpersUrl
+  const helpers: Pick<Providers, 'classifyTier' | 'compress' | 'planQueries' | 'checkPerplexity'> = env.helpersUrl
     ? {
         classifyTier: async (prompt) => (await helper<{ tier: 'fast' | 'advanced' }>('/route', { prompt }, 8000)).tier,
         compress: async (text) => (await helper<{ compressed: string }>('/compress', { prompt: text }, 15000)).compressed,
         planQueries: async (prompt) => (await helper<{ queries: { query: string }[] }>('/plan', { prompt }, 15000)).queries.map((q) => q.query),
+        checkPerplexity: async (prompt) => (await helper<{ perplexity: number }>('/perplexity', { prompt }, 8000)).perplexity,
       }
     : {};
 

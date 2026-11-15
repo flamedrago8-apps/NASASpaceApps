@@ -1,5 +1,5 @@
 import { DEMO_PRESETS } from '@tokenomics/core';
-import { ArrowUp, LoaderCircle, ShieldAlert, Zap } from 'lucide-react';
+import { ArrowUp, LoaderCircle, ShieldAlert } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, PIPELINE_ID, type TestResult, type Trace } from '../api';
 import { ProfileSlider } from '../components/ProfileSlider';
@@ -69,7 +69,10 @@ export function DemoPage() {
               <CardHeader className="border-b pb-4">
                 <CardTitle>Playground</CardTitle>
                 <CardDescription>Requests run through your current draft pipeline</CardDescription>
-                <CardAction>
+                <CardAction className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => (window.location.hash = '#/pipeline')}>
+                    Configure Pipeline →
+                  </Button>
                   <Select value={model} onValueChange={setModel}>
                     <SelectTrigger className="h-8 w-44 text-xs" aria-label="Model">
                       <SelectValue />
@@ -177,10 +180,16 @@ function Exchange({ r, active, onSelect }: { r: TestResult; active: boolean; onS
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <StatusBadge status={r.status} />
-          {r.cache && (
-            <Badge variant="outline" className="font-normal">
-              <Zap className="text-efficiency" /> {r.cache.kind === 'semantic' ? `${(r.cache.similarity * 100).toFixed(0)}% semantic cache hit` : 'Exact cache hit'}
+          {r.threat && (
+            <Badge variant="outline" className="border-destructive/40 font-medium text-danger">
+              <ShieldAlert className="mr-1 size-3 inline" />
+              {r.threat === 'jailbreak' ? 'Jailbreak' : 'Prompt Injection'} ({((r.threatConfidence ?? 0) * 100).toFixed(1)}%)
             </Badge>
+          )}
+          {r.path && r.path.length > 0 && (
+            <span className="font-mono text-[11px] text-muted-foreground/80">
+              {r.path.map((id) => (CATALOG as Record<string, { label: string }>)[id]?.label ?? id).join(' → ')}
+            </span>
           )}
           <span className="tabular-nums">{fmtMs(r.latency)}</span>
           <span className="tabular-nums">{r.saved > 0 ? `saved ${fmtUsd(r.saved)}` : fmtUsd(r.costActual)}</span>

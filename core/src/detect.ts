@@ -11,23 +11,23 @@ export type Detection = { score: number; signals: string[] };
 type Rule = { re: RegExp; w: number; label: string };
 
 const INJECTION: Rule[] = [
-  { re: /\b(ignore|disregard|forget|override|bypass)\b[^.]{0,40}\b(all |any |the |your )?(previous|prior|above|earlier|preceding|original|system)\b[^.]{0,20}\b(instructions?|prompts?|rules?|directions?|guidelines?|messages?)/i, w: 0.97, label: 'instruction override' },
-  { re: /\b(reveal|print|show|repeat|output|leak|tell me|display|dump)\b[^.]{0,40}\b(system|hidden|initial|original|developer)\s+(prompt|instructions?|message)/i, w: 0.92, label: 'system prompt extraction' },
-  { re: /<\/?\s*(system|assistant|sys)\s*>|\[\/?INST\]|<<\/?SYS>>|<\|im_(start|end)\|>/i, w: 0.85, label: 'role-tag spoofing' },
-  { re: /\b(system override|admin override|developer mode enabled|maintenance mode)\b/i, w: 0.9, label: 'fake privileged mode' },
-  { re: /\b(api[_ -]?keys?|passwords?|secrets?|credentials?|tokens?|env(ironment)? variables?)\b[^.]{0,40}\b(list|print|send|reveal|show|exfiltrate|forward|dump)|\b(list|print|send|reveal|show|exfiltrate|forward|dump)\b[^.]{0,40}\b(api[_ -]?keys?|passwords?|secrets?|credentials?)/i, w: 0.82, label: 'secret exfiltration' },
-  { re: /\b(forward|send|email|post)\b[^.]{0,40}\b(this conversation|the conversation|chat history|all messages)\b/i, w: 0.8, label: 'conversation exfiltration' },
-  { re: /\bnew instructions?\s*:/i, w: 0.7, label: 'injected instruction block' },
+  { re: /\b(ignore|disregard|forget|override|bypass)\b[^.]{0,40}\b(all |any |the |your )?(previous|prior|above|earlier|preceding|original|system)\b[^.]{0,20}\b(instructions?|prompts?|rules?|directions?)\b|\b(ignore|override|bypass)\s+(all\s+)?(instructions?|system\s+prompts?)\b/i, w: 0.97, label: 'instruction override' },
+  { re: /\b(reveal|print|show|repeat|output|leak|tell me|display|dump|what (is|are)|give me)\b[^.]{0,40}\b(system|hidden|initial|original|developer)\s+(prompt|instructions?|messages?|meta prompt)\b/i, w: 0.92, label: 'system prompt extraction' },
+  { re: /<\/?\s*(system|assistant|sys|user|admin)\s*>|\[\/?INST\]|<<\/?SYS>>|<\|im_(start|end)\|>/i, w: 0.88, label: 'role-tag spoofing' },
+  { re: /\b(system override|admin override|developer mode enabled|maintenance mode|god mode)\b/i, w: 0.92, label: 'fake privileged mode' },
+  { re: /\b(api[_ -]?keys?|passwords?|secrets?|credentials?|tokens?|env(ironment)? variables?)\b[^.]{0,40}\b(list|print|send|reveal|show|exfiltrate|forward|dump)|\b(list|print|send|reveal|show|exfiltrate|forward|dump)\b[^.]{0,40}\b(api[_ -]?keys?|passwords?|secrets?|credentials?)/i, w: 0.90, label: 'secret exfiltration' },
+  { re: /\b(forward|send|email|post)\b[^.]{0,40}\b(this conversation|the conversation|chat history|all messages)\b/i, w: 0.85, label: 'conversation exfiltration' },
+  { re: /\b(new instructions?\s*:|prompt injection)\b/i, w: 0.85, label: 'injected instruction block' },
 ];
 
 const JAILBREAK: Rule[] = [
-  { re: /\b(DAN|do anything now|STAN|DUDE|AIM)\b/, w: 0.95, label: 'known jailbreak persona' },
-  { re: /\b(you are|act as|pretend (to be|you are)|roleplay as|from now on you are)\b[^.]{0,60}\b(no|without|free of|zero)\b[^.]{0,20}\b(rules|restrictions|filters|limits|guidelines|censorship|policy|policies)/i, w: 0.93, label: 'unrestricted persona' },
-  { re: /\b(jailbreak|jailbroken|god mode|unfiltered mode|evil mode)\b/i, w: 0.9, label: 'jailbreak keyword' },
-  { re: /\b(ignore|bypass|disable|turn off)\b[^.]{0,30}\b(safety|content|ethical|ethics)\b[^.]{0,20}\b(filters?|guidelines?|policy|policies|rules|training)/i, w: 0.92, label: 'safety bypass request' },
+  { re: /\b(DAN|do anything now|STAN|DUDE|AIM|jailbreak|jailbroken|evil mode|chaos mode)\b/i, w: 0.95, label: 'known jailbreak persona' },
+  { re: /\b(you are|act as|pretend (to be|you are)|roleplay as|from now on you are|behave as)\b[^.]{0,60}\b(no|without|free of|zero|unrestricted|uncensored|unfiltered)\b[^.]{0,20}\b(rules|restrictions|filters|limits|guidelines|censorship|policy|policies)?/i, w: 0.93, label: 'unrestricted persona' },
+  { re: /\b(ignore|bypass|disable|turn off|remove|circumvent)\b[^.]{0,30}\b(safety|content|ethical|ethics|guardrails?|guidelines?|policy|policies|rules|training|filters?)\b/i, w: 0.92, label: 'safety bypass request' },
   { re: /\b(hypothetically|in a story|for a novel|in fiction|grandma|grandmother|as a joke)\b[^.]{0,120}\b(bomb|explosive|napalm|weapon|malware|ransomware|meth|poison|hack|bypass)/i, w: 0.88, label: 'fictional framing of harmful request' },
   { re: /\b(answer|respond|reply)\b[^.]{0,30}\b(in|using)\b[^.]{0,10}\b(base64|rot13|hex|leetspeak)\b/i, w: 0.85, label: 'output obfuscation' },
-  { re: /\bstay in character\b|\bno matter what\b[^.]{0,30}\b(answer|respond)/i, w: 0.6, label: 'persona lock-in' },
+  { re: /\bstay in character\b|\bno matter what\b[^.]{0,30}\b(answer|respond)/i, w: 0.7, label: 'persona lock-in' },
+  { re: /\b(unfiltered|uncensored|unrestricted|no rules|never refuse|comply with everything)\b/i, w: 0.85, label: 'unrestricted compliance command' },
 ];
 
 function base64Signal(text: string): string | null {
