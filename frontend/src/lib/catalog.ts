@@ -1,7 +1,7 @@
-import { NODE_SPECS, PALETTE, type NodeKind, type NodeSpec } from '@conduit/core';
+import { NODE_SPECS, PALETTE, type NodeKind, type NodeSpec } from '@tokenomics/core';
 import { Archive, Ban, Cpu, Database, EyeOff, Filter, Ghost, Globe, Layers, ScanEye, Send, ShieldAlert, Shrink, Split, Webhook, type LucideIcon } from 'lucide-react';
 
-export type { Field, HandleSide } from '@conduit/core';
+export type { Field, HandleSide } from '@tokenomics/core';
 
 const ICONS: Record<NodeKind, LucideIcon> = {
   ingress: Webhook,

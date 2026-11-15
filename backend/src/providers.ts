@@ -5,7 +5,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { createSimulatedProviders, estimateTokens, localEmbed, modelInfo, type ChatMessage, type ChatResult, type Clock, type Providers, type SearchResult } from '@conduit/core';
+import { createSimulatedProviders, estimateTokens, localEmbed, modelInfo, type ChatMessage, type ChatResult, type Clock, type Providers, type SearchResult } from '@tokenomics/core';
 import { env } from './env';
 import type { Store } from './store';
 

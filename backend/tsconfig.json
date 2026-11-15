@@ -10,7 +10,7 @@
     "noEmit": true,
     "types": ["node"],
     "baseUrl": ".",
-    "paths": { "@conduit/core": ["../core/src/index.ts"] }
+    "paths": { "@tokenomics/core": ["../core/src/index.ts"] }
   },
   "include": ["src", "test", "../core/src"]
 }

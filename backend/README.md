@@ -1,4 +1,4 @@
-# Conduit gateway (backend)
+# Tokenomics gateway (backend)
 
 An OpenAI-compatible AI gateway. Point any OpenAI SDK at it by changing **one line** (`baseURL`), and every request runs through the policy graph you drew in the dashboard:
 
@@ -23,7 +23,7 @@ On first start it prints your first gateway API key (shown once). Then:
 ```js
 import OpenAI from 'openai';
 const openai = new OpenAI({
-  apiKey: process.env.CONDUIT_KEY,           // cdt_live_...
+  apiKey: process.env.TOKENOMICS_KEY,           // tok_live_...
   baseURL: 'http://localhost:8787/v1',       // ← the only change
 });
 await openai.chat.completions.create({ model: 'claude-sonnet-5-5', messages: [{ role: 'user', content: 'Hi' }] });
@@ -86,7 +86,7 @@ Gateway responses carry the headers `x-gateway-trace-id`, `x-gateway-status` (`o
 
 ```bash
 npm test                                   # engine tests (core) — no server needed
-GATEWAY_KEY=cdt_live_... npm test          # + end-to-end tests against a running server, via the OpenAI SDK
+GATEWAY_KEY=tok_live_... npm test          # + end-to-end tests against a running server, via the OpenAI SDK
 ```
 
 ## Deploy
@@ -94,8 +94,8 @@ GATEWAY_KEY=cdt_live_... npm test          # + end-to-end tests against a runnin
 The root [`Dockerfile`](../Dockerfile) builds a single container serving both the gateway and the dashboard:
 
 ```bash
-docker build -t conduit .
-docker run -p 8787:8787 -v conduit-data:/data -e ADMIN_TOKEN=change-me -e ANTHROPIC_API_KEY=... conduit
+docker build -t tokenomics .
+docker run -p 8787:8787 -v tokenomics-data:/data -e ADMIN_TOKEN=change-me -e ANTHROPIC_API_KEY=... tokenomics
 ```
 
 It runs anywhere that runs a container: Fly.io, Render, Railway, Cloud Run, a VM. Mount `/data` on a persistent volume.

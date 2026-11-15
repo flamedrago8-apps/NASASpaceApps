@@ -1,2 +1,2 @@
-export type * from '@conduit/core';
-export type { Accent } from '@conduit/core';
+export type * from '@tokenomics/core';
+export type { Accent } from '@tokenomics/core';

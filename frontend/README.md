@@ -1,4 +1,4 @@
-# Conduit: AI Gateway & Search Optimizer dashboard
+# Tokenomics: AI Gateway & Search Optimizer dashboard
 
 Frontend for an AI gateway that sits between apps and LLM providers. It runs on
 Vite, React 18, TypeScript, **shadcn/ui + Tailwind CSS** (Radix primitives) and React Flow 12.

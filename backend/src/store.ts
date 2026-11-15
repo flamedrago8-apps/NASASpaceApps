@@ -6,7 +6,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { defaultPipelineDoc, upgradeDoc, type ApiKey, type Deployment, type HoneypotSession, type MetricsSnapshot, type PipelineDoc, type ProviderId, type Settings, type Trace } from '@conduit/core';
+import { defaultPipelineDoc, upgradeDoc, type ApiKey, type Deployment, type HoneypotSession, type MetricsSnapshot, type PipelineDoc, type ProviderId, type Settings, type Trace } from '@tokenomics/core';
 import { env } from './env';
 
 type StoredKey = ApiKey & { hash: string };
@@ -134,7 +134,7 @@ export class Store {
   // ---- gateway keys ----
   createKey(name: string): { key: ApiKey; secret: string } {
     const rand = crypto.randomBytes(24).toString('base64url');
-    const secret = `cdt_live_${rand}`;
+    const secret = `tok_live_${rand}`;
     const key: StoredKey = { id: `key_${rand.slice(0, 10)}`, name, prefix: secret.slice(0, 13), createdAt: new Date().toISOString(), requests: 0, hash: sha256(secret) };
     this.state.keys.unshift(key);
     this.save();
@@ -156,7 +156,7 @@ function loadSecret(): string {
   } catch {
     const s = crypto.randomBytes(32).toString('hex');
     fs.writeFileSync(f, s, { mode: 0o600 });
-    console.warn(`[conduit] SECRET_KEY not set — generated one at ${f}. Set SECRET_KEY in production.`);
+    console.warn(`[tokenomics] SECRET_KEY not set — generated one at ${f}. Set SECRET_KEY in production.`);
     return s;
   }
 }

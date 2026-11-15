@@ -29,7 +29,7 @@ Errors: any non-2xx response. A body of `{ "error": { "message": "…" } }` or
 ### Gateway (for your apps, not the dashboard)
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/v1/chat/completions` | gateway key (`cdt_live_…`) | OpenAI-compatible, including `stream: true`. Blocked requests return 403 with an OpenAI-style error body. |
+| POST | `/v1/chat/completions` | gateway key (`tok_live_…`) | OpenAI-compatible, including `stream: true`. Blocked requests return 403 with an OpenAI-style error body. |
 | GET | `/v1/models` | – | The models the router knows. |
 
 All other endpoints below are the dashboard API, protected by `ADMIN_TOKEN`.

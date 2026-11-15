@@ -1,4 +1,4 @@
-import { TOOL_KINDS, toolOrder, wireLinear, type NodeKind, type PipelineDoc, type PipelineNodeDTO } from '@conduit/core';
+import { TOOL_KINDS, toolOrder, wireLinear, type NodeKind, type PipelineDoc, type PipelineNodeDTO } from '@tokenomics/core';
 import { ArrowLeft, ArrowRight, ChevronRight, GripVertical, History, LoaderCircle, Play } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, PIPELINE_ID, type Deployment, type TestResult } from '../api';

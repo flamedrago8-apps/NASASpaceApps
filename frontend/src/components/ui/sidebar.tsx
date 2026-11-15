@@ -11,7 +11,7 @@ import { Button } from './button';
 import { Sheet, SheetContent, SheetTitle } from './sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip';
 
-const SIDEBAR_KEY = 'conduit.sidebar';
+const SIDEBAR_KEY = 'tokenomics.sidebar';
 const SIDEBAR_WIDTH = '15rem';
 const SIDEBAR_WIDTH_MOBILE = '17rem';
 const SIDEBAR_WIDTH_ICON = '3rem';

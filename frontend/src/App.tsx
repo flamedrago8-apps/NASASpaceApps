@@ -1,4 +1,5 @@
-import { Component, useState, type ReactNode } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
+import { CONNECTED_AT_RUNTIME, checkGateway, resetLocalData, saveConnection } from './api';
 import { AppSidebar } from './components/layout/AppSidebar';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { ProfileProvider } from './components/ProfileSlider';
@@ -52,6 +53,7 @@ export default function App() {
                 <SidebarProvider>
                   <AppSidebar path={route.path} onOpenCommand={() => setCmdOpen(true)} />
                   <SidebarInset className="h-svh md:h-[calc(100svh-1rem)]">
+                    <GatewayBanner />
                     <ErrorBoundary key={route.path}>
                       <div className="flex min-h-0 flex-1 flex-col">{page}</div>
                     </ErrorBoundary>
@@ -73,7 +75,48 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
   render() {
     if (this.state.error)
-      return <EmptyState title="Something went wrong on this page" body={this.state.error.message} action={<Button onClick={() => this.setState({ error: null })}>Try again</Button>} />;
+      return (
+        <EmptyState title="Something went wrong on this page" body={this.state.error.message} action={
+            <div className="flex gap-2">
+              <Button onClick={() => this.setState({ error: null })}>Try again</Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  resetLocalData();
+                  window.location.reload();
+                }}
+              >
+                Reset demo data
+              </Button>
+            </div>
+          }
+        />
+      );
     return this.props.children;
   }
+}
+
+/** Shown when the dashboard points at a gateway that isn't answering. */
+function GatewayBanner() {
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    checkGateway().then(setProblem);
+  }, []);
+  if (!problem) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm">
+      <span className="flex-1">{problem} {CONNECTED_AT_RUNTIME ? 'It was connected from Settings in this browser.' : 'Check that the server is running.'}</span>
+      {CONNECTED_AT_RUNTIME && (
+        <Button
+          size="sm"
+          onClick={() => {
+            saveConnection(null);
+            window.location.reload();
+          }}
+        >
+          Use demo data instead
+        </Button>
+      )}
+    </div>
+  );
 }

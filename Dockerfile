@@ -1,6 +1,6 @@
 # Single container: gateway API + dashboard on one port.
-#   docker build -t conduit .
-#   docker run -p 8787:8787 -v conduit-data:/data -e ADMIN_TOKEN=... -e ANTHROPIC_API_KEY=... conduit
+#   docker build -t tokenomics .
+#   docker run -p 8787:8787 -v tokenomics-data:/data -e ADMIN_TOKEN=... -e ANTHROPIC_API_KEY=... tokenomics
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY core ./core

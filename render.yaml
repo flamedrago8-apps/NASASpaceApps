@@ -2,7 +2,7 @@
 # Serves the gateway API and the dashboard from one URL (the Dockerfile builds both).
 services:
   - type: web
-    name: conduit-gateway
+    name: tokenomics-gateway
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free

@@ -23,7 +23,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@conduit/core": [
+      "@tokenomics/core": [
         "../core/src/index.ts"
       ],
       "@/*": [

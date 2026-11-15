@@ -1,4 +1,4 @@
-# Conduit: AI Gateway & Search Optimizer
+# Tokenomics: AI Gateway & Search Optimizer
 
 **[Live demo →](https://flamedrago8-apps.github.io/NASASpaceApps/)** (runs entirely in your browser on simulated upstreams)
 
@@ -6,7 +6,7 @@ An OpenAI-compatible gateway that sits between your apps and LLM providers. Chan
 
 ```js
 const openai = new OpenAI({
-  apiKey: process.env.CONDUIT_KEY,
+  apiKey: process.env.TOKENOMICS_KEY,
   baseURL: 'https://your-gateway.example.com/v1', // ← the only change
 });
 ```
@@ -53,7 +53,7 @@ docker compose up --build    # gateway + dashboard on http://localhost:8787, Pyt
 ## Deploy the backend
 
 - **Render (one click):** New → Blueprint → pick this repo. Render runs the gateway alone, so the Python helper steps use their built-in fallbacks; for those use `docker compose` on a machine that can run Ollama. `render.yaml` builds the Dockerfile, which serves the gateway *and* the dashboard on one URL. Render generates `ADMIN_TOKEN`; copy it from the service's Environment tab.
-- **Anything else that runs containers:** `docker build -t conduit . && docker run -p 8787:8787 -e ADMIN_TOKEN=... conduit`.
+- **Anything else that runs containers:** `docker build -t tokenomics . && docker run -p 8787:8787 -e ADMIN_TOKEN=... tokenomics`.
 
 ## Connect the dashboard to it
 

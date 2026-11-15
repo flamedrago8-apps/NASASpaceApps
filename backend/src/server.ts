@@ -1,5 +1,5 @@
 /**
- * Conduit gateway server.
+ * Tokenomics gateway server.
  *
  *  - OpenAI-compatible proxy:  POST /v1/chat/completions, GET /v1/models   (auth: gateway API key)
  *  - Dashboard/admin API:      everything else under /v1                    (auth: ADMIN_TOKEN)
@@ -11,7 +11,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
-import { ATTACKS, MODELS, sampleRequest, SAMPLES, toRequest, upgradeDoc, wireLinear, type ChatMessage, type PipelineDoc, type ProviderId, type Range, type Settings, type SettingsPatch, type TestRequest, type TraceQuery } from '@conduit/core';
+import { ATTACKS, MODELS, sampleRequest, SAMPLES, toRequest, upgradeDoc, wireLinear, type ChatMessage, type PipelineDoc, type ProviderId, type Range, type Settings, type SettingsPatch, type TestRequest, type TraceQuery } from '@tokenomics/core';
 import { env } from './env';
 import { Gateway } from './gateway';
 import { sha256, Store } from './store';
@@ -21,9 +21,9 @@ const gw = new Gateway(store);
 
 if (!store.state.keys.length) {
   const { secret } = store.createKey('Default');
-  console.log(`\n[conduit] Created your first gateway API key (shown once):\n\n    ${secret}\n`);
+  console.log(`\n[tokenomics] Created your first gateway API key (shown once):\n\n    ${secret}\n`);
 }
-if (!env.adminToken) console.warn('[conduit] ADMIN_TOKEN is not set — the admin API is open. Set it before exposing this server.');
+if (!env.adminToken) console.warn('[tokenomics] ADMIN_TOKEN is not set — the admin API is open. Set it before exposing this server.');
 
 const app = new Hono();
 
@@ -266,7 +266,7 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const)
 
 serve({ fetch: app.fetch, port: env.port, hostname: env.host }, (i) => {
   const keys = (['anthropic', 'openai', 'meta', 'serpapi'] as ProviderId[]).map((p) => `${p}:${store.providerKey(p).key ? 'live' : 'simulated'}`).join(' ');
-  console.log(`[conduit] gateway listening on http://${env.host}:${i.port} · providers ${keys}`);
+  console.log(`[tokenomics] gateway listening on http://${env.host}:${i.port} · providers ${keys}`);
 });
 
 export { app, sampleRequest };

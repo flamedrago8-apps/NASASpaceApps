@@ -1,4 +1,4 @@
-import { DEMO_PRESETS } from '@conduit/core';
+import { DEMO_PRESETS } from '@tokenomics/core';
 import { ArrowUp, LoaderCircle, ShieldAlert, Zap } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, PIPELINE_ID, type TestResult, type Trace } from '../api';

@@ -21,7 +21,7 @@ import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="Conduit Python helpers")
+app = FastAPI(title="Tokenomics Python helpers")
 
 _modules: dict = {}
 _errors: dict = {}

@@ -81,7 +81,7 @@ export function PageHeader({ title, subtitle, actions, children }: { title: Reac
       <Breadcrumb className="min-w-0">
         <BreadcrumbList className="flex-nowrap">
           <BreadcrumbItem className="hidden sm:inline-flex">
-            <BreadcrumbLink href="#/demo">Conduit</BreadcrumbLink>
+            <BreadcrumbLink href="#/demo">Tokenomics</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator className="hidden sm:block" />
           <BreadcrumbItem className="min-w-0">

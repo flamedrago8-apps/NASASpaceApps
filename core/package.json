@@ -1,1 +1,1 @@
-{ "name": "@conduit/core", "private": true, "type": "module", "main": "src/index.ts" }
+{ "name": "@tokenomics/core", "private": true, "type": "module", "main": "src/index.ts" }

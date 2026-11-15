@@ -28,10 +28,10 @@ import {
   type Settings,
   type Trace,
   type TraceQuery,
-} from '@conduit/core';
+} from '@tokenomics/core';
 import { ApiError, type GatewayApi } from './client';
 
-const STORE_KEY = 'conduit.mock.v3';
+const STORE_KEY = 'tokenomics.mock.v3';
 const BUFFER_MAX = 3000;
 
 type State = { pipeline: PipelineDoc; deployments: Deployment[]; snapshots: Record<number, PipelineDoc>; keys: ApiKey[]; settings: Settings; honeypot: HoneypotSession[] };
@@ -50,8 +50,8 @@ function initialState(): State {
     deployments,
     snapshots: Object.fromEntries(deployments.map((d) => [d.version, pipeline])),
     keys: [
-      { id: 'key_prod', name: 'Production', prefix: 'cdt_live_8Hq2', createdAt: new Date(now - 40 * day).toISOString(), lastUsedAt: new Date(now - 4000).toISOString(), requests: 1_204_331 },
-      { id: 'key_staging', name: 'Staging', prefix: 'cdt_live_x1Vb', createdAt: new Date(now - 21 * day).toISOString(), lastUsedAt: new Date(now - 3 * 3_600_000).toISOString(), requests: 48_210 },
+      { id: 'key_prod', name: 'Production', prefix: 'tok_live_8Hq2', createdAt: new Date(now - 40 * day).toISOString(), lastUsedAt: new Date(now - 4000).toISOString(), requests: 1_204_331 },
+      { id: 'key_staging', name: 'Staging', prefix: 'tok_live_x1Vb', createdAt: new Date(now - 21 * day).toISOString(), lastUsedAt: new Date(now - 3 * 3_600_000).toISOString(), requests: 48_210 },
     ],
     settings: {
       providers: { anthropic: { configured: true, last4: 'x9Qa' }, openai: { configured: true, last4: '2kLm' }, meta: { configured: false }, serpapi: { configured: true, last4: 'f03c' } },
@@ -264,7 +264,7 @@ export function createMockApi(): GatewayApi & { controls: MockControls } {
     },
     async createKey(name) {
       const rand = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 57]).join('');
-      const secret = `cdt_live_${rand}`;
+      const secret = `tok_live_${rand}`;
       const key: NewApiKey = { id: `key_${rand.slice(0, 8)}`, name, prefix: secret.slice(0, 13), createdAt: new Date().toISOString(), requests: 0, secret };
       const { secret: _s, ...stored } = key;
       state.keys = [stored, ...state.keys];

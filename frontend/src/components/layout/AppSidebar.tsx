@@ -50,7 +50,7 @@ export function AppSidebar({ path, onOpenCommand }: { path: string; onOpenComman
                     <Logo />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Conduit</span>
+                    <span className="truncate font-semibold">Tokenomics</span>
                     <span className="truncate text-xs text-muted-foreground">prod-gateway</span>
                   </div>
                   <ChevronsUpDown className="ml-auto" />

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "conduit-ai-gateway"
+name = "tokenomics-ai-gateway"
 version = "0.1.0"
-description = "Python helpers for the Conduit AI gateway"
+description = "Python helpers for the Tokenomics AI gateway"
 requires-python = ">=3.10"
 dependencies = [
     "llmlingua>=0.2.2",
