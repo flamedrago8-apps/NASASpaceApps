@@ -8,7 +8,7 @@ export type Accent = 'purple' | 'amber' | 'green' | 'cyan' | 'neutral' | 'red';
 
 export type Field =
   | { key: string; label: string; type: 'slider'; min: number; max: number; step: number; unit?: string; hint?: string }
-  | { key: string; label: string; type: 'select'; options: string[]; hint?: string }
+  | { key: string; label: string; type: 'select'; options: string[]; labels?: Record<string, string>; hint?: string }
   | { key: string; label: string; type: 'toggle'; hint?: string }
   | { key: string; label: string; type: 'number'; min: number; max: number; unit?: string; hint?: string };
 
@@ -29,6 +29,8 @@ export type NodeSpec = {
   terminal?: boolean;
   metric: 'blocked' | 'hitRate' | 'tokens' | 'skipped' | 'calls' | 'requests' | 'redacted' | 'trapped';
 };
+
+const ATTACK_LABELS = { block: 'Block it (403)', honeypot: 'Send to honeypot', flag: 'Allow, but flag it' };
 
 export const MODEL_OPTIONS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'gpt-4o', 'gpt-4o-mini', 'llama-3.3-70b'];
 
@@ -52,8 +54,8 @@ export const NODE_SPECS: Record<NodeKind, NodeSpec> = {
     accent: 'purple',
     description: 'Scores user and tool content for instruction-override attempts: system-prompt leaks, role hijacks, hidden directives, secret exfiltration.',
     fields: [
-      { key: 'threshold', label: 'Block threshold', type: 'slider', min: 0.3, max: 0.99, step: 0.01, hint: 'Confidence needed to act. Lower = stricter.' },
-      { key: 'action', label: 'On detection', type: 'select', options: ['block', 'flag', 'log'], hint: 'block = take the threat branch (Block or Honeypot).' },
+      { key: 'action', label: 'When an attack is detected', type: 'select', options: ['block', 'honeypot', 'flag'], labels: ATTACK_LABELS },
+      { key: 'threshold', label: 'Sensitivity threshold', type: 'slider', min: 0.3, max: 0.99, step: 0.01, hint: 'How sure it must be before acting. Lower catches more but may flag normal prompts.' },
       { key: 'scanTools', label: 'Scan tool / assistant messages', type: 'toggle' },
     ],
     defaults: { threshold: 0.75, action: 'block', scanTools: true },
@@ -68,10 +70,10 @@ export const NODE_SPECS: Record<NodeKind, NodeSpec> = {
     accent: 'amber',
     description: 'Detects persona attacks (DAN, “no rules”), obfuscation (base64, leetspeak) and policy-evasion framing.',
     fields: [
-      { key: 'threshold', label: 'Block threshold', type: 'slider', min: 0.3, max: 0.99, step: 0.01 },
-      { key: 'action', label: 'On detection', type: 'select', options: ['block', 'flag', 'log'] },
+      { key: 'action', label: 'When an attack is detected', type: 'select', options: ['block', 'honeypot', 'flag'], labels: ATTACK_LABELS },
+      { key: 'threshold', label: 'Sensitivity threshold', type: 'slider', min: 0.3, max: 0.99, step: 0.01 },
     ],
-    defaults: { threshold: 0.7, action: 'block' },
+    defaults: { threshold: 0.7, action: 'honeypot' },
     outputs: { out: 'clean', alt: 'threat' },
     altSide: 'top',
     metric: 'blocked',

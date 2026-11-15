@@ -1,4 +1,3 @@
-import { ReactFlowProvider } from '@xyflow/react';
 import { Component, useState, type ReactNode } from 'react';
 import { AppSidebar } from './components/layout/AppSidebar';
 import { CommandMenu } from './components/layout/CommandMenu';
@@ -48,7 +47,6 @@ export default function App() {
       <TraceProvider>
         <ProfileProvider>
           <TooltipProvider delayDuration={200}>
-            <ReactFlowProvider>
               <CommandOpenContext.Provider value={() => setCmdOpen(true)}>
                 {/* shadcn dashboard-01 layout: inset sidebar + content panel */}
                 <SidebarProvider>
@@ -61,7 +59,6 @@ export default function App() {
                 </SidebarProvider>
                 <CommandMenu open={cmdOpen} setOpen={setCmdOpen} />
               </CommandOpenContext.Provider>
-            </ReactFlowProvider>
           </TooltipProvider>
         </ProfileProvider>
       </TraceProvider>

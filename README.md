@@ -22,7 +22,7 @@ const openai = new OpenAI({
 | 🌐 | Intent-based search bypass ("What is 5 + 5?" never costs a search credit) | `core/src/intent.ts` |
 | 🌐 | Query merging, in-flight de-duplication, 10-minute result cache, multi-engine aggregation | `serpCache` / `queryOptimizer` / `serpApi` nodes |
 | 🛠️ | One-line drop-in for any OpenAI SDK | API keys page quickstart |
-| 🛠️ | Drag-and-drop policy canvas. The graph *is* the policy: rewire an edge and traffic follows it. | Pipeline page, `core/src/engine.ts` |
+| 🛠️ | Pipeline page: one left-to-right flow of tools. Switch tools on/off and drag to reorder; the order *is* the policy the gateway runs. | Pipeline page, `core/src/defaults.ts` (`wireLinear`) |
 
 ## Layout
 
@@ -41,4 +41,13 @@ cd backend && npm install && npm run dev                                  # gate
 cd frontend && npm install && VITE_API_URL=http://localhost:8787 npm run dev   # dashboard on :5173
 ```
 
-Without provider keys, upstream calls are simulated and clearly marked. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `SERPAPI_API_KEY` to go live. To ship both as one container, use `docker build -t conduit .`.
+Without provider keys, upstream calls are simulated and clearly marked. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `SERPAPI_API_KEY` to go live.
+
+## Deploy the backend
+
+- **Render (one click):** New → Blueprint → pick this repo. `render.yaml` builds the Dockerfile, which serves the gateway *and* the dashboard on one URL. Render generates `ADMIN_TOKEN`; copy it from the service's Environment tab.
+- **Anything else that runs containers:** `docker build -t conduit . && docker run -p 8787:8787 -e ADMIN_TOKEN=... conduit`.
+
+## Connect the dashboard to it
+
+On any copy of the dashboard (including the GitHub Pages one), go to **Settings → Gateway connection**, then paste the gateway URL and admin token and press **Test and connect**. Every page switches from demo data to the live gateway, with no rebuild. The connection is saved in that browser only. A Pages site is served over https, so the gateway must be https too (Render is).

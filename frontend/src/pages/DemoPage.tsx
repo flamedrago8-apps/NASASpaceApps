@@ -1,6 +1,6 @@
 import { DEMO_PRESETS } from '@conduit/core';
-import { ArrowUp, Ghost, LoaderCircle, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowUp, LoaderCircle, ShieldAlert, Zap } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, PIPELINE_ID, type TestResult, type Trace } from '../api';
 import { ProfileSlider } from '../components/ProfileSlider';
 import { SavingsCounter } from '../components/SavingsCounter';
@@ -14,26 +14,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { CATALOG } from '../lib/catalog';
+import { costLine, explain } from '../lib/explain';
 import { fmtMs, fmtUsd } from '../lib/format';
 import { cn } from '../lib/utils';
 import { useToast } from '../state/toast';
 import { useTraces } from '../state/traces';
-import { useAsync } from '../state/useAsync';
 
 const MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'gpt-4o', 'gpt-4o-mini'];
 const label = (t?: string) => (t === 'jailbreak' ? 'Jailbreak attempt' : t === 'prompt_injection' ? 'Prompt injection' : 'Attack');
 
 export function DemoPage() {
-  const { traces, add } = useTraces();
+  const { add } = useTraces();
   const toast = useToast();
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState(MODELS[0]);
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState<TestResult[]>([]);
-  const [alert, setAlert] = useState<Trace | null>(null);
-  const [lastPii, setLastPii] = useState<Trace | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const honeypot = useAsync(() => api.listHoneypotSessions(), [], 5000);
 
   const send = async (text: string) => {
     const p = text.trim();
@@ -44,11 +42,7 @@ export function DemoPage() {
       const r = await api.sendTestRequest({ pipelineId: PIPELINE_ID, prompt: p, model });
       add(r);
       setLog((l) => [...l, r]);
-      if (r.status === 'blocked' || r.status === 'honeypot') {
-        setAlert(r);
-        honeypot.reload();
-      }
-      if (r.io?.pii?.length) setLastPii(r);
+      setPicked(null);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Request failed', 'error');
     } finally {
@@ -60,8 +54,7 @@ export function DemoPage() {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' });
   }, [log, busy]);
 
-  const attacks = useMemo(() => traces.filter((t) => t.status === 'blocked' || t.status === 'honeypot' || t.leakedThreat).slice(0, 8), [traces]);
-  const pii = lastPii ?? traces.find((t) => t.io?.pii?.length) ?? null;
+  const focus = log.find((r) => r.id === picked) ?? log[log.length - 1] ?? null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -102,7 +95,7 @@ export function DemoPage() {
                   </div>
                 )}
                 {log.map((r) => (
-                  <Exchange key={r.id} r={r} />
+                  <Exchange key={r.id} r={r} active={focus?.id === r.id} onSelect={() => setPicked(r.id)} />
                 ))}
                 {busy && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -147,101 +140,21 @@ export function DemoPage() {
               </CardFooter>
             </Card>
 
-            {/* ---- Right column ---- */}
+            {/* ---- Right column: one plain-English explanation ---- */}
             <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-              {alert ? (
+              {focus && (focus.status === 'blocked' || focus.status === 'honeypot') && (
                 <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
                   <ShieldAlert className="h-4 w-4" />
                   <AlertTitle>
-                    {label(alert.threat)} blocked ({((alert.threatConfidence ?? 0) * 100).toFixed(1)}% confidence)
+                    {label(focus.threat)} blocked ({((focus.threatConfidence ?? 0) * 100).toFixed(1)}% confidence)
                   </AlertTitle>
                   <AlertDescription className="text-muted-foreground">
-                    {alert.status === 'honeypot' ? 'Routed to the sandboxed honeypot. ' : 'Rejected with 403. '}The upstream model was never called — $0.00 charged.
+                    {focus.status === 'honeypot' ? 'Routed to the sandboxed honeypot. ' : 'Rejected with 403. '}The real model was never called, so nothing was charged.
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <Alert>
-                  <ShieldCheck className="h-4 w-4" />
-                  <AlertTitle>Guardrails active</AlertTitle>
-                  <AlertDescription className="text-muted-foreground">Injection and jailbreak detection run on every request before any model is called.</AlertDescription>
-                </Alert>
               )}
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle>Security events</CardTitle>
-                  <CardDescription>Attacks seen by the gateway from any client</CardDescription>
-                </CardHeader>
-                <CardContent className="px-0 pb-2">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="pl-6">Time</TableHead>
-                        <TableHead>Outcome</TableHead>
-                        <TableHead className="text-right">Confidence</TableHead>
-                        <TableHead className="pr-6">Prompt</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {attacks.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="h-16 text-center text-muted-foreground">
-                            No attacks yet.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {attacks.map((t) => (
-                        <TableRow key={t.id}>
-                          <TableCell className="whitespace-nowrap pl-6 tabular-nums text-muted-foreground">{new Date(t.ts).toLocaleTimeString([], { hour12: false })}</TableCell>
-                          <TableCell>{t.leakedThreat ? <Badge variant="outline" className="text-security-amber">Missed</Badge> : <StatusBadge status={t.status} />}</TableCell>
-                          <TableCell className="text-right tabular-nums">{t.threatConfidence ? `${(t.threatConfidence * 100).toFixed(1)}%` : '—'}</TableCell>
-                          <TableCell className="max-w-[200px] truncate pr-6 text-muted-foreground">{t.prompt}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              <PiiCompare trace={pii} />
+              <WhatHappened trace={focus} />
               <ProfileSlider />
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle>Honeypot sessions</CardTitle>
-                  <CardDescription>Attackers kept busy by the decoy model</CardDescription>
-                  <CardAction>
-                    <Ghost className="size-4 text-muted-foreground" />
-                  </CardAction>
-                </CardHeader>
-                <CardContent className="px-0 pb-2">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="pl-6">Attacker</TableHead>
-                        <TableHead className="text-right">Attempts</TableHead>
-                        <TableHead className="pr-6 text-right">Time wasted</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {!honeypot.data?.length && (
-                        <TableRow>
-                          <TableCell colSpan={3} className="h-16 text-center text-muted-foreground">
-                            No one trapped yet.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {honeypot.data?.slice(0, 5).map((h) => (
-                        <TableRow key={h.id} title={`Last prompt: ${h.lastPrompt}\n\nDecoy reply: ${h.lastReply}`}>
-                          <TableCell className="max-w-[160px] truncate pl-6 font-mono text-xs">{h.id}</TableCell>
-                          <TableCell className="text-right tabular-nums">{h.attempts}</TableCell>
-                          <TableCell className="pr-6 text-right tabular-nums">{fmtMs(h.timeWastedMs)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>
@@ -250,78 +163,71 @@ export function DemoPage() {
   );
 }
 
-function Exchange({ r }: { r: TestResult }) {
+function Exchange({ r, active, onSelect }: { r: TestResult; active: boolean; onSelect: () => void }) {
   const stopped = r.status === 'blocked' || r.status === 'honeypot';
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-sm">{r.io?.input ?? r.prompt}</div>
       </div>
-      <div className="max-w-[92%] space-y-2.5">
+      <button onClick={onSelect} className={cn('block w-full max-w-[92%] rounded-lg p-2 -m-2 text-left transition-colors hover:bg-muted/40', active && 'bg-muted/40')}>
         <div className={cn('whitespace-pre-wrap break-words text-sm leading-relaxed', stopped ? (r.status === 'honeypot' ? 'font-mono text-xs text-muted-foreground' : 'text-danger') : 'text-foreground')}>
-          {r.status === 'honeypot' && <div className="mb-1.5 font-sans text-xs text-muted-foreground">Decoy reply sent to the attacker:</div>}
+          {r.status === 'honeypot' && <div className="mb-1.5 font-sans text-xs text-muted-foreground">Decoy reply the attacker received:</div>}
           {r.response}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <StatusBadge status={r.status} />
-          {r.threatConfidence !== undefined && (
-            <Badge variant="outline" className="font-normal">
-              {label(r.threat)} · {(r.threatConfidence * 100).toFixed(1)}%
-            </Badge>
-          )}
           {r.cache && (
             <Badge variant="outline" className="font-normal">
               <Zap className="text-efficiency" /> {r.cache.kind === 'semantic' ? `${(r.cache.similarity * 100).toFixed(0)}% semantic cache hit` : 'Exact cache hit'}
             </Badge>
           )}
-          {r.searchBypassed && (
-            <Badge variant="outline" className="font-normal text-muted-foreground">
-              Search bypassed · internal knowledge sufficient
-            </Badge>
-          )}
-          {r.searchSent > 0 && (
-            <Badge variant="outline" className="font-normal">
-              {r.searchRaw} → {r.searchSent} searches
-            </Badge>
-          )}
-          {!!r.io?.pii?.length && (
-            <Badge variant="outline" className="font-normal">
-              {r.io.pii.length} PII values swapped
-            </Badge>
-          )}
-          <span className="ml-auto flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
-            <span>{r.status === 'honeypot' ? 'decoy' : r.model}</span>
-            <span>{fmtMs(r.latency)}</span>
-            <span className={r.saved > 0 ? 'text-foreground' : ''}>{r.saved > 0 ? `saved ${fmtUsd(r.saved)}` : fmtUsd(r.saved)}</span>
-          </span>
+          <span className="tabular-nums">{fmtMs(r.latency)}</span>
+          <span className="tabular-nums">{r.saved > 0 ? `saved ${fmtUsd(r.saved)}` : fmtUsd(r.costActual)}</span>
+          <span className="ml-auto">{active ? 'Explained on the right' : 'Click to explain'}</span>
         </div>
-        <PathStrip trace={r} />
-      </div>
+      </button>
     </div>
   );
 }
 
-/** The nodes this request visited. Skipped search shows as "Bypassed". */
-function PathStrip({ trace }: { trace: Trace }) {
-  const steps = trace.spans.filter((s) => s.outcome !== 'bypassed');
+/** Step-by-step, plain-English account of one request. */
+function WhatHappened({ trace }: { trace: TestResult | null }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-      {steps.map((s, i) => (
-        <Fragment key={i}>
-          {i > 0 && <span aria-hidden>›</span>}
-          <span title={s.detail} className={cn(s.outcome === 'blocked' && 'text-danger', s.outcome === 'trapped' && 'text-foreground', s.outcome === 'hit' && 'text-efficiency')}>
-            {CATALOG[s.kind].label}
-          </span>
-        </Fragment>
-      ))}
-      {trace.searchBypassed && (
-        <>
-          <span aria-hidden>·</span>
-          <span className="line-through decoration-muted-foreground/50">SerpAPI</span>
-          <span>bypassed — internal knowledge sufficient</span>
-        </>
-      )}
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle>What just happened</CardTitle>
+        <CardDescription>Each step the gateway took for this request</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!trace ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Send a request and this panel explains, step by step, how the gateway handled it.</p>
+        ) : (
+          <div className="space-y-5">
+            <ol className="space-y-3">
+              {explain(trace).map((s, i) => {
+                const Icon = CATALOG[s.kind].icon;
+                return (
+                  <li key={i} className="flex gap-3 text-sm">
+                    <span className={cn('mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border', s.tone === 'good' && 'border-efficiency/40 text-efficiency', s.tone === 'bad' && 'border-destructive/50 text-danger', s.tone === 'neutral' && 'text-muted-foreground')}>
+                      <Icon className="size-3.5" />
+                    </span>
+                    <span className="leading-relaxed">{s.text}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            {trace.searchBypassed && (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="line-through">SerpAPI</span> bypassed: internal knowledge sufficient
+              </p>
+            )}
+            {!!trace.io?.pii?.length && <PiiCompare trace={trace} />}
+            <p className="border-t pt-4 text-sm font-medium">{costLine(trace)}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -350,15 +256,9 @@ function PiiCompare({ trace }: { trace: Trace | null }) {
   const real = io?.pii?.map((p) => p.real) ?? [];
   const fake = io?.pii?.map((p) => p.synthetic) ?? [];
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle>PII token swap</CardTitle>
-        <CardDescription>The model only ever sees synthetic values</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!io?.pii?.length ? (
-          <div className="py-4 text-center text-sm text-muted-foreground">Send the PII suggestion to see the round trip.</div>
-        ) : (
+    <div>
+      <div className="mb-2 text-sm font-medium">What the model saw vs. what your app got</div>
+      {!io?.pii?.length ? null : (
           <Tabs defaultValue="request">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="request">Request</TabsTrigger>
@@ -402,9 +302,8 @@ function PiiCompare({ trace }: { trace: Trace | null }) {
               </Table>
             </TabsContent>
           </Tabs>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 

@@ -241,6 +241,7 @@ const H: Record<NodeKind, Handler> = {
   },
 
   async serpCache(s, cfg, ctx) {
+    if (s.searchBypassed) return { outcome: 'skipped', detail: 'not needed: no live data required' };
     s.serpTtl = MAX_AGE[String(cfg.maxAge)] ?? 600_000;
     const merged = plannedQueries(lastUser(s.req.messages), PROFILE_SEARCH[ctx.profile].maxQueries);
     const now = ctx.clock.wall();
@@ -262,6 +263,7 @@ const H: Record<NodeKind, Handler> = {
   },
 
   async queryOptimizer(s, cfg, ctx) {
+    if (s.searchBypassed) return { outcome: 'skipped', detail: 'not needed: no live data required' };
     const raw = s.queries.length ? s.queries : s.naiveQueries;
     const max = Math.min(Number(cfg.maxQueries), PROFILE_SEARCH[ctx.profile].maxQueries);
     s.queries = plannedQueries(lastUser(s.req.messages), max);
@@ -276,6 +278,7 @@ const H: Record<NodeKind, Handler> = {
   },
 
   async serpApi(s, cfg, ctx) {
+    if (s.searchBypassed) return { outcome: 'skipped', detail: 'not needed: no live data required' };
     const queries = s.queries.length ? s.queries : s.naiveQueries;
     const prof = PROFILE_SEARCH[ctx.profile];
     const engines = prof.engines > 1 ? [String(cfg.engine), String(cfg.engine) === 'bing' ? 'google' : 'bing'] : [String(cfg.engine)];
@@ -394,7 +397,7 @@ function securityVerdict(s: State, cfg: NodeConfig, d: { score: number; signals:
     return { outcome: 'pass', detail: `${fmtConfidence(d.score)} < ${fmtConfidence(th)}${sig}` };
   }
   s.threat = { type, confidence: d.score, signals: d.signals };
-  if (cfg.action === 'block') return { outcome: 'blocked', detail: `${name} detected · ${fmtConfidence(d.score)} confidence${sig}`, branch: 'alt' };
+  if (cfg.action === 'block' || cfg.action === 'honeypot') return { outcome: 'blocked', detail: `${name} detected · ${fmtConfidence(d.score)} confidence${sig}`, branch: 'alt' };
   if (cfg.action === 'flag') s.status = 'flagged';
   return { outcome: 'flagged', detail: `${name} ${cfg.action}ged · ${fmtConfidence(d.score)}${sig}` };
 }

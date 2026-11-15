@@ -11,7 +11,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
-import { ATTACKS, MODELS, sampleRequest, SAMPLES, toRequest, upgradeDoc, type ChatMessage, type PipelineDoc, type ProviderId, type Range, type Settings, type SettingsPatch, type TestRequest, type TraceQuery } from '@conduit/core';
+import { ATTACKS, MODELS, sampleRequest, SAMPLES, toRequest, upgradeDoc, wireLinear, type ChatMessage, type PipelineDoc, type ProviderId, type Range, type Settings, type SettingsPatch, type TestRequest, type TraceQuery } from '@conduit/core';
 import { env } from './env';
 import { Gateway } from './gateway';
 import { sha256, Store } from './store';
@@ -114,7 +114,8 @@ admin.put('/pipelines/:id/draft', async (c) => {
   const doc = (await c.req.json()) as PipelineDoc;
   if (!Array.isArray(doc.nodes) || !Array.isArray(doc.edges) || !doc.nodes.some((n) => n.kind === 'ingress')) return c.json({ error: { message: 'A pipeline needs nodes, edges and an Ingress node.' } }, 400);
   const p = store.state.pipeline;
-  store.state.pipeline = upgradeDoc({ ...p, nodes: doc.nodes, edges: doc.edges, hasDraft: true, updatedAt: new Date().toISOString() });
+  // The tool order is the source of truth; the server derives the edges itself.
+  store.state.pipeline = wireLinear(upgradeDoc({ ...p, nodes: doc.nodes, edges: doc.edges, hasDraft: true, updatedAt: new Date().toISOString() }));
   store.save();
   return c.json(store.state.pipeline);
 });

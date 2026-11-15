@@ -11,8 +11,8 @@ export const ACCENT: Record<Accent, { fg: string; soft: string; ring: string }> 
 };
 
 export const PILLAR: Record<Pillar, { label: string; accent: Accent; blurb: string }> = {
-  security: { label: 'Security', accent: 'purple', blurb: 'Prompt injection & jailbreak detection' },
-  efficiency: { label: 'Efficiency', accent: 'green', blurb: 'Exact / semantic cache & token compression' },
-  search: { label: 'SerpAPI Routing', accent: 'cyan', blurb: 'Minimize & optimize live web searches' },
+  security: { label: 'Security', accent: 'purple', blurb: 'Attack detection and privacy' },
+  efficiency: { label: 'Cost savings', accent: 'green', blurb: 'Caching and prompt compression' },
+  search: { label: 'Web search', accent: 'cyan', blurb: 'Fewer, cheaper SerpAPI calls' },
   core: { label: 'Core', accent: 'neutral', blurb: 'Ingress, model provider & response' },
 };

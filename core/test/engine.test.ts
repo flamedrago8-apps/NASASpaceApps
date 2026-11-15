@@ -99,3 +99,32 @@ test('benign prompts are not flagged', async () => {
     assert.ok(r.trace.status !== 'blocked' && r.trace.status !== 'honeypot', `${p} → ${r.trace.status} ${r.trace.spans.map((s) => s.detail).join(' | ')}`);
   }
 });
+
+test('the linear tool order drives the graph', async () => {
+  const { wireLinear } = await import('../src/defaults');
+  // Turn off the search tools: live-data prompts now go straight to the LLM.
+  const noSearch = structuredClone(doc);
+  for (const n of noSearch.nodes) if (['searchIntent', 'serpCache', 'queryOptimizer', 'serpApi'].includes(n.kind)) n.enabled = false;
+  const r = await runPipeline(wireLinear(noSearch), req('Weather in Denver right now?'), { ...ctx, stores: createStores() });
+  assert.equal(r.trace.searchSent, 0);
+  assert.ok(!r.trace.path.includes('serpApi') && r.trace.path.includes('llm'));
+  // Move the semantic cache in front of security: a cached answer now skips the security checks.
+  const reordered = structuredClone(doc);
+  reordered.nodes.find((n) => n.kind === 'semanticCache')!.position.x = -50;
+  const w = wireLinear(reordered);
+  assert.equal(w.edges.find((e) => e.source === 'ingress')!.target, 'semanticCache');
+  // Choosing "block" instead of "honeypot" for jailbreaks rewires the threat branch.
+  const blockJb = structuredClone(doc);
+  blockJb.nodes.find((n) => n.kind === 'jailbreak')!.config.action = 'block';
+  const b = await runPipeline(wireLinear(blockJb), req(preset('Jailbreak')), ctx);
+  assert.equal(b.trace.status, 'blocked');
+});
+
+test('search bypass holds even when the router is placed before other steps', async () => {
+  const { wireLinear } = await import('../src/defaults');
+  const d = structuredClone(doc);
+  d.nodes.find((n) => n.kind === 'searchIntent')!.position.x = 150; // between exact and semantic cache
+  const r = await runPipeline(wireLinear(d), req('Who wrote Romeo and Juliet? My account ID is 4411.'), { ...ctx, stores: createStores() });
+  assert.equal(r.trace.searchBypassed, true);
+  assert.equal(r.trace.searchSent, 0);
+});

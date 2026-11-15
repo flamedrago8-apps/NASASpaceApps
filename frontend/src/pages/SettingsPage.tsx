@@ -4,6 +4,7 @@ import { api, type ProviderId, type Settings, type SettingsPatch } from '../api'
 import { Toggle } from '../components/ui/controls';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Button, CopyButton, ErrorState, PageHeader, Spinner, TextInput } from '../components/ui/kit';
+import { ConnectionCard } from '../components/ConnectionCard';
 import { useToast } from '../state/toast';
 import { useAsync } from '../state/useAsync';
 
@@ -67,6 +68,10 @@ export function SettingsPage() {
           <Spinner label="Loading settings" />
         ) : (
           <div className="mx-auto max-w-[860px] space-y-8 p-4 pb-28 sm:p-6 sm:pb-28">
+            <Section title="Gateway connection" body="Point this dashboard at your running gateway server. Leave it disconnected to explore with demo data.">
+              <ConnectionCard />
+            </Section>
+
             <Section title="Model providers" body="Keys the gateway uses to call upstream models. They’re write-only — stored encrypted and never shown again.">
               {PROVIDERS.map((p) => (
                 <SecretRow key={p.id} name={p.name} hint={p.hint} placeholder={p.placeholder} state={s.providers[p.id]} value={keys[p.id]} onChange={(v) => setKeys((k) => ({ ...k, [p.id]: v }))} />
