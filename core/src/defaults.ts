@@ -9,8 +9,8 @@ import type { NodeKind, PipelineDoc, PipelineEdgeDTO, PipelineNodeDTO } from './
  */
 
 /** Tools a user can switch on/off and reorder, in their recommended default order. */
-export const TOOL_KINDS: NodeKind[] = ['injection', 'jailbreak', 'pii', 'compressor', 'searchIntent', 'queryOptimizer', 'serpApi'];
-const FIXED: NodeKind[] = ['ingress', 'llm', 'response', 'block', 'honeypot'];
+export const TOOL_KINDS: NodeKind[] = ['injection', 'jailbreak', 'pii', 'compressor', 'searchIntent', 'queryOptimizer', 'serpApi', 'llm'];
+const FIXED: NodeKind[] = ['ingress', 'response', 'block', 'honeypot'];
 const EXCLUDED_KINDS = new Set<string>(['exactCache', 'semanticCache', 'serpCache']);
 
 const node = (kind: NodeKind, x: number, enabled = true): PipelineNodeDTO => ({ id: kind, kind, label: NODE_SPECS[kind].label, position: { x, y: 0 }, enabled, config: { ...NODE_SPECS[kind].defaults } });
@@ -23,8 +23,9 @@ export function toolOrder(doc: Pick<PipelineDoc, 'nodes'>): PipelineNodeDTO[] {
 export function wireLinear(doc: PipelineDoc): PipelineDoc {
   const nodes = doc.nodes.filter((n) => !EXCLUDED_KINDS.has(n.kind));
   for (const k of FIXED) if (!nodes.some((n) => n.kind === k)) nodes.push(node(k, k === 'ingress' ? -1 : 10_000));
+  if (!nodes.some((n) => n.kind === 'llm')) nodes.push(node('llm', 5000, true));
   const byKind = (k: NodeKind) => nodes.find((n) => n.kind === k)!;
-  const chain = [byKind('ingress'), ...toolOrder({ nodes }), byKind('llm'), byKind('response')];
+  const chain = [byKind('ingress'), ...toolOrder({ nodes }), byKind('response')];
   const edges: PipelineEdgeDTO[] = [];
   const add = (s: PipelineNodeDTO, t: PipelineNodeDTO, h: 'out' | 'alt') => edges.push({ id: `${s.id}->${t.id}`, source: s.id, target: t.id, sourceHandle: h });
   chain.forEach((n, i) => {
@@ -32,7 +33,7 @@ export function wireLinear(doc: PipelineDoc): PipelineDoc {
     const cfg = { ...NODE_SPECS[n.kind].defaults, ...n.config };
     if (n.kind === 'injection' || n.kind === 'jailbreak') add(n, byKind(cfg.action === 'honeypot' ? 'honeypot' : 'block'), 'alt');
     if (n.kind === 'searchIntent') {
-      const after = chain.slice(i + 1).find((m) => NODE_SPECS[m.kind].pillar !== 'search') ?? byKind('llm');
+      const after = chain.slice(i + 1).find((m) => NODE_SPECS[m.kind].pillar !== 'search') ?? byKind('response');
       add(n, after, 'alt');
     }
   });
@@ -46,7 +47,7 @@ export function defaultPipelineDoc(id = 'chat-default'): PipelineDoc {
     deployedVersion: 1,
     hasDraft: false,
     updatedAt: new Date().toISOString(),
-    nodes: [node('ingress', -1), ...TOOL_KINDS.map((k, i) => node(k, i * 100)), node('llm', 10_000), node('response', 10_100), node('block', 20_000), node('honeypot', 20_100)],
+    nodes: [node('ingress', -1), ...TOOL_KINDS.map((k, i) => node(k, i * 100)), node('response', 10_100), node('block', 20_000), node('honeypot', 20_100)],
     edges: [],
   });
 }

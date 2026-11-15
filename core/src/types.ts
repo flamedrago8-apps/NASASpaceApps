@@ -75,6 +75,8 @@ export type TraceStatus = 'ok' | 'cache_hit' | 'blocked' | 'flagged' | 'honeypot
 
 export type PiiSwap = { type: string; real: string; synthetic: string };
 
+export type SearchResult = { title: string; url: string; snippet: string; source: string };
+
 export type Trace = {
   id: string;
   ts: number;
@@ -102,6 +104,7 @@ export type Trace = {
   leakedThreat?: boolean; // attack that got through because a guard was off/too lax
   cache?: { kind: 'exact' | 'semantic'; similarity: number; matched?: string };
   searchBypassed?: boolean;
+  searchResults?: SearchResult[];
   simulated?: boolean; // upstream calls were simulated (no provider key / demo mode)
   error?: string;
   /** Request/response as each side saw it — powers the PII side-by-side view. */
@@ -119,7 +122,7 @@ export type TraceQuery = { status?: TraceFilter; q?: string; limit?: number; bef
 export type TracePage = { items: Trace[]; nextBefore?: number };
 
 export type TestRequest = { pipelineId: string; attack?: boolean; prompt?: string; model?: string };
-export type TestResult = Trace & { response: string };
+export type TestResult = Trace & { response: string; body?: unknown };
 
 // ---- Metrics ----------------------------------------------------------------------------------
 

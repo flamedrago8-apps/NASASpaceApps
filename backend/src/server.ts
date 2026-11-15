@@ -184,7 +184,11 @@ admin.post('/test-requests', async (c) => {
       : toRequest(SAMPLES[Math.floor(Math.random() * SAMPLES.length)]);
   req.clientId = `dashboard:${c.req.header('x-forwarded-for') ?? 'local'}`;
   const res = await gw.handle(req, { draft: true });
-  return c.json({ ...res.trace, response: res.httpStatus === 200 ? res.text : String((res.body as { error?: { message?: string } }).error?.message ?? 'Request failed') });
+  return c.json({
+    ...res.trace,
+    response: res.httpStatus === 200 ? res.text : String((res.body as { error?: { message?: string } }).error?.message ?? 'Request failed'),
+    body: res.body,
+  });
 });
 
 const RANGES = ['1h', '24h', '7d', '30d'];

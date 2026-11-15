@@ -67,12 +67,13 @@ export function createProviders(store: Store, clock: Clock): Providers {
     if (!res.ok) throw new Error(`helper ${path} ${res.status}`);
     return (await res.json()) as T;
   };
-  const helpers: Pick<Providers, 'classifyTier' | 'compress' | 'planQueries' | 'checkPerplexity'> = env.helpersUrl
+  const helpers: Pick<Providers, 'classifyTier' | 'compress' | 'planQueries' | 'checkPerplexity' | 'redact'> = env.helpersUrl
     ? {
         classifyTier: async (prompt) => (await helper<{ tier: 'fast' | 'advanced' }>('/route', { prompt }, 8000)).tier,
         compress: async (text) => (await helper<{ compressed: string }>('/compress', { prompt: text }, 15000)).compressed,
         planQueries: async (prompt) => (await helper<{ queries: { query: string }[] }>('/plan', { prompt }, 15000)).queries.map((q) => q.query),
         checkPerplexity: async (prompt) => (await helper<{ perplexity: number }>('/perplexity', { prompt }, 8000)).perplexity,
+        redact: async (prompt) => (await helper<{ redacted_prompt: string }>('/redact', { prompt }, 8000)).redacted_prompt,
       }
     : {};
 
@@ -112,25 +113,57 @@ export function createProviders(store: Store, clock: Clock): Providers {
 
     async search(query, engine, num) {
       const { key } = store.providerKey('serpapi');
-      if (!key) return sim.search(query, engine, num);
-      const url = new URL('https://serpapi.com/search.json');
-      url.searchParams.set('engine', engine);
-      url.searchParams.set(engine === 'bing' ? 'count' : 'num', String(num));
-      url.searchParams.set('q', query);
-      url.searchParams.set('api_key', key);
-      const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-      if (!res.ok) throw new Error(`SerpAPI ${res.status}: ${(await res.text()).slice(0, 160)}`);
-      const j = (await res.json()) as {
-        answer_box?: { title?: string; answer?: string; snippet?: string; link?: string };
-        organic_results?: { title: string; link: string; snippet?: string }[];
-      };
-      const out: SearchResult[] = [];
-      if (j.answer_box && (j.answer_box.answer || j.answer_box.snippet)) out.push({ title: j.answer_box.title ?? 'Answer', url: j.answer_box.link ?? `serpapi:answer:${query}`, snippet: j.answer_box.answer ?? j.answer_box.snippet ?? '', source: engine });
-      for (const r of j.organic_results ?? []) out.push({ title: r.title, url: r.link, snippet: r.snippet ?? '', source: engine });
-      return { results: out.slice(0, num) };
+      if (key) {
+        const url = new URL('https://serpapi.com/search.json');
+        url.searchParams.set('engine', engine);
+        url.searchParams.set(engine === 'bing' ? 'count' : 'num', String(num));
+        url.searchParams.set('q', query);
+        url.searchParams.set('api_key', key);
+        const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+        if (!res.ok) throw new Error(`SerpAPI ${res.status}: ${(await res.text()).slice(0, 160)}`);
+        const j = (await res.json()) as {
+          answer_box?: { title?: string; answer?: string; snippet?: string; link?: string };
+          organic_results?: { title: string; link: string; snippet?: string }[];
+        };
+        const out: SearchResult[] = [];
+        if (j.answer_box && (j.answer_box.answer || j.answer_box.snippet)) out.push({ title: j.answer_box.title ?? 'Answer', url: j.answer_box.link ?? `serpapi:answer:${query}`, snippet: j.answer_box.answer ?? j.answer_box.snippet ?? '', source: engine });
+        for (const r of j.organic_results ?? []) out.push({ title: r.title, url: r.link, snippet: r.snippet ?? '', source: engine });
+        return { results: out.slice(0, num) };
+      }
+      if (env.helpersUrl) {
+        try {
+          const res = await helper<{ links: string[] }>('/search', { search_queries: [{ query, category: 'FOUNDATIONAL' }] }, 15000);
+          if (res.links && res.links.length) {
+            return {
+              results: res.links.slice(0, num).map((url, i) => ({
+                title: `Search Result ${i + 1} for ${query}`,
+                url,
+                snippet: `Live search result retrieved via backend for ${query}`,
+                source: engine || 'brave',
+              })),
+            };
+          }
+        } catch {}
+      }
+      return sim.search(query, engine, num);
     },
 
     async honeypot(messages, persona) {
+      if (env.helpersUrl) {
+        try {
+          const user = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+          const res = await helper<{ reply: string }>('/honeypot', { prompt: user, persona }, 12_000);
+          if (res.reply) {
+            return {
+              text: res.reply,
+              inputTokens: estimateTokens(user),
+              outputTokens: estimateTokens(res.reply),
+              model: 'qwen3.5:4b (honeypot decoy)',
+              simulated: false,
+            };
+          }
+        } catch {}
+      }
       if (!honeypotClient || !env.honeypot.model) return sim.honeypot(messages, persona);
       return openaiChat(honeypotClient, env.honeypot.model, messages, 400);
     },

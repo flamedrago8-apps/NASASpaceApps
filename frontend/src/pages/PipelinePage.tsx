@@ -1,5 +1,5 @@
-import { TOOL_KINDS, toolOrder, wireLinear, type NodeKind, type PipelineDoc, type PipelineNodeDTO } from '@tokenomics/core';
-import { ArrowLeft, ArrowRight, ChevronRight, GripVertical, History, LoaderCircle, Play } from 'lucide-react';
+import { TOOL_KINDS, toolOrder, wireLinear, type NodeKind, type PipelineDoc, type PipelineNodeDTO, type SearchResult } from '@tokenomics/core';
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Code, Copy, ExternalLink, Globe, GripVertical, History, LoaderCircle, MessageSquare, Play } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, PIPELINE_ID, type Deployment, type TestResult } from '../api';
 import { ProfileSlider } from '../components/ProfileSlider';
@@ -22,7 +22,7 @@ import { useAsync } from '../state/useAsync';
 import type { ConfigValue, Pillar } from '../types';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
-const GROUPS: Exclude<Pillar, 'core'>[] = ['security', 'efficiency', 'search'];
+const GROUPS: Pillar[] = ['security', 'efficiency', 'search', 'core'];
 
 export function PipelinePage({ route }: { route: Route }) {
   const doc = useAsync(() => api.getPipeline(PIPELINE_ID), []);
@@ -299,7 +299,7 @@ function FlowStrip({ flow, selected, onSelect, onMove, test }: { flow: PipelineN
   const [drag, setDrag] = useState<NodeKind | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const visited = new Set(test?.path ?? []);
-  const items: { kind: NodeKind; fixed?: boolean }[] = [{ kind: 'ingress', fixed: true }, ...flow.map((n) => ({ kind: n.kind })), { kind: 'llm', fixed: true }, { kind: 'response', fixed: true }];
+  const items: { kind: NodeKind; fixed?: boolean }[] = [{ kind: 'ingress', fixed: true }, ...flow.map((n) => ({ kind: n.kind })), { kind: 'response', fixed: true }];
 
   return (
     <div>
@@ -324,11 +324,11 @@ function FlowStrip({ flow, selected, onSelect, onMove, test }: { flow: PipelineN
                 onDragOver={(e) => {
                   if (!drag || it.kind === 'ingress') return;
                   e.preventDefault();
-                  setOver(it.kind === 'llm' || it.kind === 'response' ? flow.length : toolIdx);
+                  setOver(it.kind === 'response' ? flow.length : toolIdx);
                 }}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (drag) onMove(drag, it.kind === 'llm' || it.kind === 'response' ? flow.length : toolIdx);
+                  if (drag) onMove(drag, it.kind === 'response' ? flow.length : toolIdx);
                   setDrag(null);
                   setOver(null);
                 }}
@@ -364,29 +364,206 @@ function Block({ kind, selected, fixed, dragging, skipped, onClick }: { kind: No
       <span className="grid size-8 place-items-center rounded-lg border" style={{ color: a.fg, background: a.soft, borderColor: a.ring.replace('0.45', '0.2') }}>
         <Icon className="size-4" />
       </span>
-      <span className="text-[13px] font-medium leading-tight">{fixed ? (kind === 'ingress' ? 'Ingestion' : kind === 'llm' ? 'LLM API' : 'Return') : c.label}</span>
+      <span className="text-[13px] font-medium leading-tight">{fixed ? (kind === 'ingress' ? 'Ingestion' : 'Return') : c.label}</span>
       <span className="text-[11px] leading-tight text-muted-foreground">{PLAIN[kind].short}</span>
       {!fixed && <GripVertical className="absolute right-1 top-1.5 size-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/60" aria-hidden />}
     </button>
   );
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+  return (
+    <button
+      onClick={onCopy}
+      type="button"
+      className="inline-flex items-center gap-1.5 rounded border bg-card px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+      title="Copy to clipboard"
+    >
+      {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+      <span>{copied ? 'Copied' : 'Copy JSON'}</span>
+    </button>
+  );
+}
+
 function TestSummary({ r }: { r: TestResult }) {
+  const [tab, setTab] = useState<'response' | 'json' | 'search'>('response');
   const notes: string[] = [];
   if (r.cache) notes.push(r.cache.kind === 'semantic' ? `answered from cache (${Math.round(r.cache.similarity * 100)}% similar question)` : 'answered from cache (same question)');
   if (r.searchBypassed) notes.push('skipped web search: not needed');
   if (r.searchSent) notes.push(`${r.searchSent} web search${r.searchSent > 1 ? 'es' : ''} instead of ${r.searchRaw}`);
   if (r.io?.pii?.length) notes.push(`${r.io.pii.length} personal details hidden from the model`);
   if (r.threat) notes.push(`${r.threat === 'jailbreak' ? 'jailbreak' : 'injection'} caught (${fmtPct(r.threatConfidence ?? 0)} sure)`);
+
+  const searchResults: SearchResult[] = useMemo(() => {
+    if (r.searchResults && r.searchResults.length > 0) return r.searchResults;
+    if (!r.response || !r.response.includes('[Live Web Search Context]:')) return [];
+    const lines = r.response.split('\n');
+    const items: SearchResult[] = [];
+    for (const line of lines) {
+      const match = line.match(/^\[\d+\]\s*(.*?)\s*—\s*(.*?)\s*\((https?:\/\/[^\s)]+)\)/);
+      if (match) {
+        items.push({
+          title: match[1],
+          snippet: match[2],
+          url: match[3],
+          source: 'web',
+        });
+      }
+    }
+    return items;
+  }, [r.searchResults, r.response]);
+
+  const jsonPayload = r.body ?? {
+    id: `chatcmpl-${r.id}`,
+    object: 'chat.completion',
+    created: Math.floor(r.ts / 1000),
+    model: r.model,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: r.response,
+        },
+        finish_reason: 'stop',
+      },
+    ],
+    usage: {
+      prompt_tokens: r.tokensSent,
+      completion_tokens: r.tokensOut,
+      total_tokens: r.tokensSent + r.tokensOut,
+    },
+    ...(searchResults.length ? { search_results: searchResults } : {}),
+  };
+  const jsonStr = JSON.stringify(jsonPayload, null, 2);
+
   return (
-    <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={r.status} />
-        <span className="text-muted-foreground">“{r.prompt.length > 90 ? r.prompt.slice(0, 89) + '…' : r.prompt}”</span>
+    <div className="mt-4 rounded-lg border bg-muted/20 text-sm overflow-hidden">
+      {/* Top bar: Status & Metrics */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={r.status} />
+          <span className="font-medium text-foreground">“{r.prompt.length > 90 ? r.prompt.slice(0, 89) + '…' : r.prompt}”</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{fmtMs(r.latency)}</span>
+          <span>·</span>
+          <span>cost {fmtUsd(r.costActual)} (was {fmtUsd(r.costBaseline)})</span>
+        </div>
       </div>
-      <div className="mt-2 text-muted-foreground">
-        {fmtMs(r.latency)} · cost {fmtUsd(r.costActual)} instead of {fmtUsd(r.costBaseline)}
-        {notes.length > 0 && ` · ${notes.join(' · ')}`}. Steps it skipped are dimmed above.
+
+      {notes.length > 0 && (
+        <div className="border-b px-3 py-1.5 text-xs text-muted-foreground bg-muted/10">
+          {notes.join(' · ')}
+        </div>
+      )}
+
+      {/* Tabs bar */}
+      <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-1">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setTab('response')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+              tab === 'response' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <MessageSquare className="size-3.5" />
+            Response Text
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('json')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+              tab === 'json' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Code className="size-3.5" />
+            JSON Response
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('search')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+              tab === 'search' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Globe className="size-3.5" />
+            Search Results {searchResults.length > 0 && `(${searchResults.length})`}
+          </button>
+        </div>
+        {tab === 'json' && <CopyButton text={jsonStr} />}
+      </div>
+
+      {/* Tab Panels */}
+      <div className="p-3">
+        {tab === 'response' && (
+          <div className="space-y-1">
+            <div className="rounded border bg-background/80 p-3 font-mono text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-[320px] overflow-y-auto">
+              {r.response || '(Empty response)'}
+            </div>
+          </div>
+        )}
+
+        {tab === 'json' && (
+          <div className="space-y-2">
+            <pre className="rounded border bg-background/80 p-3 font-mono text-xs text-foreground overflow-x-auto max-h-[320px] overflow-y-auto">
+              <code>{jsonStr}</code>
+            </pre>
+          </div>
+        )}
+
+        {tab === 'search' && (
+          <div className="space-y-2">
+            {searchResults.length === 0 ? (
+              <div className="rounded border border-dashed p-4 text-center text-xs text-muted-foreground">
+                No web search results were gathered for this query (search was either bypassed or disabled).
+              </div>
+            ) : (
+              <div className="grid gap-2 max-h-[320px] overflow-y-auto pr-1">
+                {searchResults.map((item, idx) => (
+                  <div key={idx} className="rounded-lg border bg-background p-3 text-xs space-y-1 hover:border-foreground/20 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline flex items-center gap-1 line-clamp-1"
+                      >
+                        {item.title}
+                        <ExternalLink className="size-3 shrink-0 opacity-70" />
+                      </a>
+                      {item.source && (
+                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase font-mono text-muted-foreground">
+                          {item.source}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground/80 truncate">
+                      {item.url}
+                    </div>
+                    {item.snippet && (
+                      <p className="text-muted-foreground text-[11px] leading-relaxed pt-1 border-t border-muted/40">
+                        {item.snippet}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -440,7 +617,7 @@ function StepPanel({
             <Icon className="size-4" />
           </span>
           <div>
-            <CardTitle>{kind === 'ingress' ? 'Ingestion' : kind === 'llm' ? 'LLM API' : kind === 'response' ? 'Return' : node.label}</CardTitle>
+            <CardTitle>{kind === 'ingress' ? 'Ingestion' : kind === 'response' ? 'Return' : node.label}</CardTitle>
             <CardDescription className="mt-1">{PILLAR[c.pillar].label}</CardDescription>
           </div>
         </div>

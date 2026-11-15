@@ -73,8 +73,9 @@ export const NODE_SPECS: Record<NodeKind, NodeSpec> = {
     fields: [
       { key: 'action', label: 'When an attack is detected', type: 'select', options: ['block', 'honeypot', 'flag'], labels: ATTACK_LABELS },
       { key: 'threshold', label: 'Sensitivity threshold', type: 'slider', min: 0.1, max: 0.99, step: 0.01 },
+      { key: 'perplexityThreshold', label: 'Perplexity threshold', type: 'number', min: 50, max: 2000, hint: 'Prompts with perplexity at or above this score are treated as attacks.' },
     ],
-    defaults: { threshold: 0.5, action: 'honeypot' },
+    defaults: { threshold: 0.5, perplexityThreshold: 450, action: 'honeypot' },
     outputs: { out: 'clean', alt: 'threat' },
     altSide: 'top',
     metric: 'blocked',

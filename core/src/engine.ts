@@ -15,7 +15,7 @@ import { restorePii, swapPii } from './pii';
 import { EMBED_PRICE, HONEYPOT_PRICE, modelInfo, PROFILE_SEARCH, routeModel, SERP_COST, SERP_CTX_TOKENS, tokenCost } from './pricing';
 import { entities, entitiesMatch, SemanticCache } from './semantic';
 import { estimateTokens, hashKey } from './text';
-import type { NodeConfig, NodeKind, PiiSwap, PipelineDoc, PipelineNodeDTO, Profile, Span, SpanOutcome, Trace, TraceStatus } from './types';
+import type { NodeConfig, NodeKind, PiiSwap, PipelineDoc, PipelineNodeDTO, Profile, SearchResult, Span, SpanOutcome, Trace, TraceStatus } from './types';
 
 // ---- I/O contracts ----------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ export type GatewayRequest = {
 };
 
 export type ChatResult = { text: string; inputTokens: number; outputTokens: number; model: string; simulated?: boolean };
-export type SearchResult = { title: string; url: string; snippet: string; source: string };
+export type { SearchResult };
 
 export interface Providers {
   chat(model: string, messages: ChatMessage[], opts: { maxTokens: number }): Promise<ChatResult>;
@@ -42,6 +42,7 @@ export interface Providers {
   compress?(text: string): Promise<string>;
   planQueries?(prompt: string): Promise<string[]>;
   checkPerplexity?(prompt: string): Promise<number>;
+  redact?(prompt: string): Promise<string>;
 }
 
 export interface Clock {
@@ -146,22 +147,49 @@ const H: Record<NodeKind, Handler> = {
     return securityVerdict(s, cfg, d, 'prompt_injection', 'Prompt injection');
   },
 
-  async jailbreak(s, cfg) {
+  async jailbreak(s, cfg, ctx) {
     const d = detectJailbreak(promptText(s.messages));
+    if (ctx.providers.checkPerplexity) {
+      try {
+        const text = promptText(s.messages);
+        const score = await ctx.providers.checkPerplexity(text);
+        const th = Number(cfg.perplexityThreshold) || 450;
+        if (score >= th) {
+          d.signals.push(`high perplexity (${score.toFixed(1)} >= ${th})`);
+          d.score = Math.max(d.score, 0.96);
+        }
+      } catch {
+        // backend unavailable, rely on regexes
+      }
+    }
     return securityVerdict(s, cfg, d, 'jailbreak', 'Jailbreak attempt');
   },
 
-  async pii(s, cfg) {
+  async pii(s, cfg, ctx) {
     const mode = String(cfg.mode) as 'synthetic' | 'redact' | 'mask';
     s.piiMode = mode;
+    let backendRedacted = false;
+    if (ctx.providers.redact) {
+      try {
+        const userPrompt = lastUser(s.messages);
+        const redacted = await ctx.providers.redact(userPrompt);
+        if (redacted && redacted !== userPrompt) {
+          s.messages = s.messages.map((m) => (m.role === 'user' ? { ...m, content: redacted } : m));
+          backendRedacted = true;
+        }
+      } catch {}
+    }
     const swaps: PiiSwap[] = [];
     s.messages = s.messages.map((m) => (m.role === 'user' || m.role === 'system' ? { ...m, content: swapPii(m.content, mode, Boolean(cfg.names), swaps).text } : m));
     s.pii = swaps;
-    if (!swaps.length) return { outcome: 'pass', detail: 'no PII found' };
-    const kinds = [...new Set(swaps.map((x) => x.type))].join(', ');
+    if (!swaps.length && !backendRedacted) return { outcome: 'pass', detail: 'no PII found' };
+    const kinds = [...new Set(swaps.map((x) => x.type))];
+    if (backendRedacted) kinds.push('credentials/patterns');
+    const kindsStr = kinds.join(', ');
+    const count = swaps.length || 1;
     return {
       outcome: 'redacted',
-      detail: mode === 'synthetic' ? `swapped ${swaps.length} value${swaps.length > 1 ? 's' : ''} (${kinds}) with synthetic data` : `${mode}ed ${swaps.length} value${swaps.length > 1 ? 's' : ''} (${kinds})`,
+      detail: mode === 'synthetic' ? `swapped ${count} value${count > 1 ? 's' : ''} (${kindsStr}) with synthetic data` : `${mode}ed ${count} value${count > 1 ? 's' : ''} (${kindsStr})`,
       meta: swaps.map((x) => `${x.type}: ${x.synthetic}`),
     };
   },
@@ -235,15 +263,15 @@ const H: Record<NodeKind, Handler> = {
     const r = compressMessages(s.messages, Number(cfg.keepTurns), String(cfg.strategy));
     s.messages = r.messages;
     let via = '';
-    // LLMLingua-2 (Python sidecar) on long context: older turns, and pasted documents in the latest message.
+    // LLMLingua-2 (Python sidecar) on user prompt
     if (ctx.providers.compress) {
       const lastU = s.messages.map((m) => m.role).lastIndexOf('user');
       try {
         const out = await Promise.all(
-          s.messages.map(async (m, i) => (m.role !== 'system' && (i !== lastU || m.content.length > 1200) && m.content.length > 400 ? { ...m, content: await ctx.providers.compress!(m.content) } : m)),
+          s.messages.map(async (m, i) => (m.role !== 'system' && (i === lastU || m.content.length > 30) ? { ...m, content: await ctx.providers.compress!(m.content) } : m)),
         );
         const after = out.reduce((n, m) => n + estimateTokens(m.content), 0);
-        if (after < r.after) {
+        if (after <= r.after) {
           s.messages = out;
           r.after = after;
           via = ' · LLMLingua-2';
@@ -429,14 +457,28 @@ const H: Record<NodeKind, Handler> = {
   },
 
   async response(s, _cfg, ctx) {
+    let isAlteredOnly = false;
     if (!s.answer) {
-      s.status = 'error';
-      s.httpStatus = 500;
-      s.errorBody = { error: { message: 'Pipeline produced no response: connect a path to the LLM node.', type: 'pipeline_error', code: 'no_response' } };
-      return { outcome: 'blocked', detail: 'no answer reached the Response node', branch: 'end' };
+      isAlteredOnly = true;
+      let text = lastUser(s.messages);
+      if (s.results.length) {
+        const context = s.results
+          .slice(0, 8)
+          .map((r, i) => `[${i + 1}] ${r.title} — ${r.snippet} (${r.url})`)
+          .join('\n');
+        text = `[Live Web Search Context]:\n${context}\n\n[Altered Prompt Text]:\n${text}`;
+      }
+      s.answer = {
+        text,
+        outputTokens: estimateTokens(text),
+        inputTokens: s.tokensInNaive,
+        model: 'pipeline-only (no LLM)',
+        simulated: false,
+      };
+      s.tokensSent = 0;
     }
     const restored = s.piiMode === 'synthetic' && s.pii.length ? restorePii(s.answer.text, s.pii) : s.answer.text;
-    const fresh = !s.cacheHit && s.status !== 'honeypot' && !s.pii.length && s.status !== 'flagged';
+    const fresh = !s.cacheHit && s.status !== 'honeypot' && !s.pii.length && s.status !== 'flagged' && !isAlteredOnly;
     if (fresh) {
       const value: CachedAnswer = { text: s.answer.text, outputTokens: s.answer.outputTokens, model: s.answer.model, prompt: lastUser(s.req.messages), costBaseline: 0 };
       const now = ctx.clock.wall();
@@ -445,7 +487,13 @@ const H: Record<NodeKind, Handler> = {
     }
     s.answer.text = restored;
     const restoredN = s.piiMode === 'synthetic' ? s.pii.length : 0;
-    return { outcome: 'pass', detail: `200${restoredN ? ` · restored ${restoredN} real value${restoredN > 1 ? 's' : ''}` : ''}${fresh ? ' · cached for reuse' : ''}`, branch: 'end' };
+    return {
+      outcome: 'pass',
+      detail: isAlteredOnly
+        ? 'Altered text returned without LLM call ($0 model cost)'
+        : `200${restoredN ? ` · restored ${restoredN} real value${restoredN > 1 ? 's' : ''}` : ''}${fresh ? ' · cached for reuse' : ''}`,
+      branch: 'end',
+    };
   },
 };
 
@@ -560,7 +608,7 @@ export async function runPipeline(doc: PipelineDoc, req: GatewayRequest, ctx: En
     ts,
     app: req.app,
     route: '/v1/chat/completions',
-    model: s.status === 'honeypot' ? 'honeypot-decoy' : s.routedModel,
+    model: s.status === 'honeypot' ? 'honeypot-decoy' : (s.answer?.model ?? s.routedModel),
     requestedModel: req.model,
     profile: ctx.profile,
     prompt: ctx.logPayloads ? logText(prompt) : '[payload logging off]',
@@ -586,6 +634,7 @@ export async function runPipeline(doc: PipelineDoc, req: GatewayRequest, ctx: En
     leakedThreat: s.leaked && !s.threat,
     cache: s.cacheHit,
     searchBypassed: s.searchBypassed,
+    searchResults: s.results.length ? s.results : undefined,
     simulated: s.simulated || undefined,
     error: s.errorBody ? String((s.errorBody.error as { message?: string })?.message ?? '') : undefined,
     io: ctx.logPayloads
@@ -606,7 +655,7 @@ export async function runPipeline(doc: PipelineDoc, req: GatewayRequest, ctx: En
           id: `chatcmpl-${trace.id}`,
           object: 'chat.completion',
           created: Math.floor(ts / 1000),
-          model: s.status === 'honeypot' ? req.model : s.routedModel,
+          model: s.status === 'honeypot' ? req.model : (s.answer?.model ?? s.routedModel),
           choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
           usage: { prompt_tokens: trace.tokensSent, completion_tokens: outTok, total_tokens: trace.tokensSent + outTok },
         }

@@ -240,7 +240,7 @@ export function createMockApi(): GatewayApi & { controls: MockControls } {
       const res = await runPipeline(state.pipeline, r, ctx({ stores: demoStores }));
       record(res.trace, r);
       const response = res.httpStatus === 200 ? res.text : String((res.body as { error?: { message?: string } }).error?.message ?? 'Request failed');
-      return { ...res.trace, response };
+      return { ...res.trace, response, body: res.body };
     },
 
     async getSummary(range) {
