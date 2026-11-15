@@ -9,8 +9,9 @@ import type { NodeKind, PipelineDoc, PipelineEdgeDTO, PipelineNodeDTO } from './
  */
 
 /** Tools a user can switch on/off and reorder, in their recommended default order. */
-export const TOOL_KINDS: NodeKind[] = ['injection', 'jailbreak', 'pii', 'exactCache', 'semanticCache', 'compressor', 'searchIntent', 'serpCache', 'queryOptimizer', 'serpApi'];
+export const TOOL_KINDS: NodeKind[] = ['injection', 'jailbreak', 'pii', 'compressor', 'searchIntent', 'queryOptimizer', 'serpApi'];
 const FIXED: NodeKind[] = ['ingress', 'llm', 'response', 'block', 'honeypot'];
+const EXCLUDED_KINDS = new Set<string>(['exactCache', 'semanticCache', 'serpCache']);
 
 const node = (kind: NodeKind, x: number, enabled = true): PipelineNodeDTO => ({ id: kind, kind, label: NODE_SPECS[kind].label, position: { x, y: 0 }, enabled, config: { ...NODE_SPECS[kind].defaults } });
 
@@ -20,7 +21,7 @@ export function toolOrder(doc: Pick<PipelineDoc, 'nodes'>): PipelineNodeDTO[] {
 }
 
 export function wireLinear(doc: PipelineDoc): PipelineDoc {
-  const nodes = [...doc.nodes];
+  const nodes = doc.nodes.filter((n) => !EXCLUDED_KINDS.has(n.kind));
   for (const k of FIXED) if (!nodes.some((n) => n.kind === k)) nodes.push(node(k, k === 'ingress' ? -1 : 10_000));
   const byKind = (k: NodeKind) => nodes.find((n) => n.kind === k)!;
   const chain = [byKind('ingress'), ...toolOrder({ nodes }), byKind('llm'), byKind('response')];
@@ -30,8 +31,7 @@ export function wireLinear(doc: PipelineDoc): PipelineDoc {
     if (i < chain.length - 1) add(n, chain[i + 1], 'out');
     const cfg = { ...NODE_SPECS[n.kind].defaults, ...n.config };
     if (n.kind === 'injection' || n.kind === 'jailbreak') add(n, byKind(cfg.action === 'honeypot' ? 'honeypot' : 'block'), 'alt');
-    if (n.kind === 'exactCache' || n.kind === 'semanticCache') add(n, byKind('response'), 'alt');
-    if (n.kind === 'searchIntent' || n.kind === 'serpCache') {
+    if (n.kind === 'searchIntent') {
       const after = chain.slice(i + 1).find((m) => NODE_SPECS[m.kind].pillar !== 'search') ?? byKind('llm');
       add(n, after, 'alt');
     }
@@ -56,8 +56,8 @@ export function defaultPipelineDoc(id = 'chat-default'): PipelineDoc {
  * 2D canvas (tools spread over rows) to the linear order.
  */
 export function upgradeDoc(doc: PipelineDoc): PipelineDoc {
-  let nodes = doc.nodes.filter((n) => NODE_SPECS[n.kind]).map((n) => ({ ...n, config: { ...NODE_SPECS[n.kind].defaults, ...n.config } }));
+  let nodes = doc.nodes.filter((n) => !EXCLUDED_KINDS.has(n.kind) && NODE_SPECS[n.kind]).map((n) => ({ ...n, config: { ...NODE_SPECS[n.kind].defaults, ...n.config } }));
   const legacy = nodes.some((n) => TOOL_KINDS.includes(n.kind) && n.position.y !== 0);
   if (legacy) nodes = nodes.map((n) => (TOOL_KINDS.includes(n.kind) ? { ...n, position: { x: TOOL_KINDS.indexOf(n.kind) * 100, y: 0 } } : n));
-  return legacy ? wireLinear({ ...doc, nodes }) : { ...doc, nodes };
+  return wireLinear({ ...doc, nodes });
 }

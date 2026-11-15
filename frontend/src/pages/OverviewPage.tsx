@@ -82,7 +82,7 @@ export function OverviewPage() {
                 sub={`${rangeLabel} vs. a gateway-less baseline`}
               />
               <StatCard label="Actual spend" value={fmtUsd(s.costActual)} delta={trend(pts, (p) => p.costActual, (p) => p.requests)} deltaHint="Cost per request vs. first half of the window" goodWhenDown headline={`${fmtUsd(s.costNaive)} without the gateway`} sub="Models, search and embeddings" />
-              <StatCard label="Requests" value={fmtNum(s.requests)} delta={trend(pts, (p) => p.requests)} deltaHint="Volume vs. first half of the window" headline={`${fmtPct(s.cacheHits / Math.max(1, s.requests))} served from cache`} sub={`p50 ${fmtMs(s.latencyP50)} · p95 ${fmtMs(s.latencyP95)}`} />
+              <StatCard label="Requests" value={fmtNum(s.requests)} delta={trend(pts, (p) => p.requests)} deltaHint="Volume vs. first half of the window" headline={`${fmtNum(s.requests)} live requests routed`} sub={`p50 ${fmtMs(s.latencyP50)} · p95 ${fmtMs(s.latencyP95)}`} />
               <StatCard label="Threats stopped" value={fmtNum(s.blocked)} delta={trend(pts, (p) => p.blocked, (p) => p.requests)} deltaHint="Threats per request vs. first half of the window" goodWhenDown headline={`${fmtNum(s.honeypotted)} trapped in the honeypot`} sub="Never reached or billed a model" />
             </div>
 

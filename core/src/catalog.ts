@@ -228,10 +228,10 @@ export const NODE_SPECS: Record<NodeKind, NodeSpec> = {
   },
   response: {
     label: 'Response',
-    subtitle: 'Restore PII · store caches',
+    subtitle: 'Restore PII',
     pillar: 'core',
     accent: 'neutral',
-    description: 'Swaps real PII back in, stores cache entries and returns an OpenAI-format completion with ROI headers.',
+    description: 'Swaps real PII back in and returns an OpenAI-format completion with ROI headers.',
     fields: [],
     defaults: {},
     outputs: {},
@@ -242,7 +242,7 @@ export const NODE_SPECS: Record<NodeKind, NodeSpec> = {
 
 export const PALETTE: { pillar: Pillar; kinds: NodeKind[] }[] = [
   { pillar: 'security', kinds: ['injection', 'jailbreak', 'pii', 'block', 'honeypot'] },
-  { pillar: 'efficiency', kinds: ['exactCache', 'semanticCache', 'compressor'] },
-  { pillar: 'search', kinds: ['searchIntent', 'serpCache', 'queryOptimizer', 'serpApi'] },
+  { pillar: 'efficiency', kinds: ['compressor'] },
+  { pillar: 'search', kinds: ['searchIntent', 'queryOptimizer', 'serpApi'] },
   { pillar: 'core', kinds: ['llm'] },
 ];

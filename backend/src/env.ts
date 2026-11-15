@@ -1,4 +1,16 @@
+import fs from 'node:fs';
 import path from 'node:path';
+
+// Load .env from root or backend if available in Node 20+
+for (const p of [path.resolve('../.env'), path.resolve('.env')]) {
+  if (fs.existsSync(p)) {
+    try {
+      if (typeof process.loadEnvFile === 'function') {
+        process.loadEnvFile(p);
+      }
+    } catch {}
+  }
+}
 
 const bool = (v: string | undefined, d = false) => (v === undefined || v === '' ? d : /^(1|true|yes|on)$/i.test(v));
 
@@ -27,7 +39,7 @@ export const env = {
     serpapi: process.env.SERPAPI_API_KEY ?? process.env.SERPAPI_KEY ?? '',
   },
   llama: { baseUrl: process.env.LLAMA_BASE_URL ?? 'https://api.groq.com/openai/v1', model: process.env.LLAMA_MODEL ?? 'llama-3.3-70b-versatile' },
-  /** Python helpers sidecar (backend/helpers_server.py). Unset = built-in logic only. */
-  helpersUrl: (process.env.PY_HELPERS_URL ?? '').replace(/\/$/, ''),
+  /** Python helpers sidecar (backend/app.py or helpers_server.py). Defaults to localhost:8000. */
+  helpersUrl: (process.env.PY_HELPERS_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, ''),
   honeypot: { baseUrl: process.env.HONEYPOT_BASE_URL ?? '', apiKey: process.env.HONEYPOT_API_KEY ?? '', model: process.env.HONEYPOT_MODEL ?? '' },
 };

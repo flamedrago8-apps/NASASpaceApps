@@ -78,7 +78,7 @@ export function SettingsPage() {
               ))}
             </Section>
 
-            <Section title="Web search" body="Used by the SerpAPI node. Every call the router, cache and optimizer avoid is billed against this key.">
+            <Section title="Web search" body="Used by the SerpAPI node. Every call the router and optimizer avoid is billed against this key.">
               <SecretRow name="SerpAPI" hint="serpapi.com API key" placeholder="SerpAPI key" state={s.providers.serpapi} value={keys.serpapi} onChange={(v) => setKeys((k) => ({ ...k, serpapi: v }))} />
             </Section>
 

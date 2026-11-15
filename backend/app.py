@@ -162,7 +162,7 @@ async def perform_searches(breakdown: dict) -> list[str]:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "router": True, "compressor": True, "planner": True}
 
 
 @app.post("/perplexity")
@@ -188,7 +188,24 @@ async def compress(request: PromptRequest):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    return await asyncio.to_thread(optimize_prompt, request.prompt)
+    result = await asyncio.to_thread(optimize_prompt, request.prompt)
+    if isinstance(result, dict) and "compressed_prompt" in result:
+        result["compressed"] = result["compressed_prompt"]
+    return result
+
+
+@app.post("/plan")
+async def plan(request: PromptRequest):
+    if not request.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+    breakdown = await asyncio.to_thread(breakdown_prompt, request.prompt)
+    queries = [
+        {"query": q.get("query", ""), "category": q.get("category", "")}
+        for q in breakdown.get("search_queries", [])
+        if isinstance(q, dict) and q.get("query")
+    ]
+    return {"queries": queries}
 
 
 @app.post("/redact")

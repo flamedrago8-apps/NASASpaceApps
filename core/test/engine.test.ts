@@ -38,22 +38,6 @@ test('PII is swapped before the model and restored after', async () => {
   assert.ok(!r.text.includes('example.net'), r.text);
 });
 
-test('semantic cache matches a paraphrase but not a different city', async () => {
-  const a = await run(preset('Weather'));
-  assert.equal(a.trace.status, 'ok');
-  const b = await run(preset('Paraphrase'));
-  assert.equal(b.trace.status, 'cache_hit', JSON.stringify(b.trace.spans.find((s) => s.kind === 'semanticCache')));
-  assert.equal(b.trace.cache?.kind, 'semantic');
-  assert.ok(b.trace.latency < 50, `latency ${b.trace.latency}`);
-  const c = await run('Tell me if it is raining in Dallas, TX');
-  assert.notEqual(c.trace.status, 'cache_hit');
-});
-
-test('exact repeat hits the exact cache', async () => {
-  await run('Explain the difference between TCP and UDP');
-  const r = await run('Explain the difference between TCP and UDP');
-  assert.equal(r.trace.cache?.kind, 'exact');
-});
 
 test('static-knowledge prompts bypass search', async () => {
   for (const p of [preset('5 + 5'), preset('Shakespeare')]) {
@@ -104,15 +88,15 @@ test('the linear tool order drives the graph', async () => {
   const { wireLinear } = await import('../src/defaults');
   // Turn off the search tools: live-data prompts now go straight to the LLM.
   const noSearch = structuredClone(doc);
-  for (const n of noSearch.nodes) if (['searchIntent', 'serpCache', 'queryOptimizer', 'serpApi'].includes(n.kind)) n.enabled = false;
+  for (const n of noSearch.nodes) if (['searchIntent', 'queryOptimizer', 'serpApi'].includes(n.kind)) n.enabled = false;
   const r = await runPipeline(wireLinear(noSearch), req('Weather in Denver right now?'), { ...ctx, stores: createStores() });
   assert.equal(r.trace.searchSent, 0);
   assert.ok(!r.trace.path.includes('serpApi') && r.trace.path.includes('llm'));
-  // Move the semantic cache in front of security: a cached answer now skips the security checks.
+  // Move PII to the front:
   const reordered = structuredClone(doc);
-  reordered.nodes.find((n) => n.kind === 'semanticCache')!.position.x = -50;
+  reordered.nodes.find((n) => n.kind === 'pii')!.position.x = -50;
   const w = wireLinear(reordered);
-  assert.equal(w.edges.find((e) => e.source === 'ingress')!.target, 'semanticCache');
+  assert.equal(w.edges.find((e) => e.source === 'ingress')!.target, 'pii');
   // Choosing "block" instead of "honeypot" for jailbreaks rewires the threat branch.
   const blockJb = structuredClone(doc);
   blockJb.nodes.find((n) => n.kind === 'jailbreak')!.config.action = 'block';

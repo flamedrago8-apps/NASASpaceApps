@@ -90,7 +90,7 @@ export function DemoPage() {
                   <div className="mx-auto flex max-w-sm flex-col items-center gap-2 py-12 text-center">
                     <div className="text-sm font-medium">Send a request through the gateway</div>
                     <p className="text-sm text-muted-foreground">
-                      Try <span className="text-foreground">Weather</span>, then <span className="text-foreground">Paraphrase</span> for a semantic cache hit, or <span className="text-foreground">Jailbreak</span> to trip the honeypot.
+                      Try <span className="text-foreground">Weather</span>, <span className="text-foreground">PII</span> for synthetic data redaction, or <span className="text-foreground">Jailbreak</span> to trip the honeypot.
                     </p>
                   </div>
                 )}
