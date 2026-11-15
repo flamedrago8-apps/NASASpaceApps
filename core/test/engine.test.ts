@@ -141,3 +141,21 @@ test('grandma jailbreak with only jailbreak detector active goes to honeypot', a
   assert.ok(r.trace.threatConfidence! > 0.9);
   assert.ok(r.trace.path.includes('honeypot'));
 });
+
+test('serpApi honors custom num slider setting', async () => {
+  const { wireLinear } = await import('../src/defaults');
+  const d = structuredClone(doc);
+  for (const n of d.nodes) {
+    if (n.kind !== 'ingress' && n.kind !== 'response') {
+      n.enabled = n.kind === 'serpApi';
+    }
+  }
+  const serp = d.nodes.find((n) => n.kind === 'serpApi')!;
+  serp.config.num = 7;
+  serp.config.engine = 'google';
+  const wired = wireLinear(d);
+  const r = await runPipeline(wired, req('Latest news about Artemis program'), { ...ctx, stores: createStores() });
+  assert.equal(r.trace.status, 'ok');
+  assert.ok(r.trace.searchResults && r.trace.searchResults.length === 7, `Expected 7 results, got ${r.trace.searchResults?.length}`);
+  assert.equal(r.trace.searchResults[0].source, 'google');
+});

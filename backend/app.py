@@ -30,6 +30,8 @@ class PromptRequest(BaseModel):
 class BreakdownRequest(BaseModel):
     research_question: str | None = None
     search_queries: list[dict]
+    num: int | None = None
+    engine: str | None = None
 
 
 class HoneypotRequest(BaseModel):
@@ -170,31 +172,67 @@ WEIGHTS = {
 }
 
 
-def search_query(query: dict, scraper: serpapi.Client) -> list[str]:
-    response = scraper.search(
-        engine="brave",
-        q=query["query"],
-        location="Austin, Texas",
-        hl="en",
-        gl="us",
-    )
-    organic_results = response.get("organic_results", [])
-    amount = WEIGHTS.get(query.get("category"), 1)
-    return [result["link"] for result in organic_results[:amount] if "link" in result]
+def search_query(query: dict, scraper: serpapi.Client, default_num: int | None = None, default_engine: str | None = None) -> list[dict]:
+    eng = query.get("engine") or default_engine or "google"
+    params = {
+        "engine": eng,
+        "q": query.get("query", ""),
+        "hl": "en",
+        "gl": "us",
+    }
+    num_val = query.get("num") or default_num
+    if not num_val:
+        num_val = WEIGHTS.get(query.get("category"), 6)
+    num_val = max(1, int(num_val))
+
+    if eng == "bing":
+        params["count"] = num_val
+    else:
+        params["num"] = num_val
+
+    try:
+        response = scraper.search(**params)
+        organic_results = response.get("organic_results", [])
+        answer_box = response.get("answer_box")
+        out = []
+        if answer_box and (answer_box.get("answer") or answer_box.get("snippet")):
+            out.append({
+                "title": answer_box.get("title") or "Direct Answer",
+                "link": answer_box.get("link") or f"https://www.google.com/search?q={query.get('query')}",
+                "snippet": answer_box.get("answer") or answer_box.get("snippet", ""),
+                "source": eng,
+            })
+        for r in organic_results:
+            if "link" in r:
+                out.append({
+                    "title": r.get("title", "Search Result"),
+                    "link": r["link"],
+                    "snippet": r.get("snippet", ""),
+                    "source": eng,
+                })
+            if len(out) >= num_val:
+                break
+        return out
+    except Exception as e:
+        print(f"SerpAPI query error: {e}")
+        return []
 
 
-async def perform_searches(breakdown: dict) -> list[str]:
+async def perform_searches(breakdown: dict) -> list[dict]:
     api_key = os.getenv('SERPAPI_KEY')
     if not api_key:
         raise HTTPException(status_code=500, detail="SERPAPI_KEY is not set")
+    api_key = api_key.strip("'\"")
 
     scraper = serpapi.Client(api_key=api_key)
+    num = breakdown.get("num")
+    engine = breakdown.get("engine")
     searches = [
-        asyncio.to_thread(search_query, query, scraper)
+        asyncio.to_thread(search_query, query, scraper, num, engine)
         for query in breakdown.get("search_queries", [])
     ]
     results = await asyncio.gather(*searches)
-    return [link for links in results for link in links]
+    return [item for group in results for item in group]
 
 
 @app.get("/health")
@@ -280,7 +318,9 @@ async def breakdown(request: PromptRequest):
 
 @app.post("/search")
 async def search(request: BreakdownRequest):
-    return {"links": await perform_searches(request.model_dump())}
+    results = await perform_searches(request.model_dump())
+    links = [r["link"] for r in results if isinstance(r, dict) and "link" in r]
+    return {"results": results, "links": links}
 
 
 @app.post("/process")
@@ -294,7 +334,8 @@ async def process_prompt(request: PromptRequest):
         asyncio.to_thread(optimize_prompt, request.prompt),
     )
     breakdown = await asyncio.to_thread(breakdown_prompt, request.prompt)
-    links = await perform_searches(breakdown)
+    raw_results = await perform_searches(breakdown)
+    links = [r["link"] if isinstance(r, dict) and "link" in r else r for r in raw_results]
 
     return {
         "prompt_level": prompt_level[0],

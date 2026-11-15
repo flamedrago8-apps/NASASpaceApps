@@ -113,39 +113,92 @@ export function createProviders(store: Store, clock: Clock): Providers {
 
     async search(query, engine, num) {
       const { key } = store.providerKey('serpapi');
-      if (key) {
-        const url = new URL('https://serpapi.com/search.json');
-        url.searchParams.set('engine', engine);
-        url.searchParams.set(engine === 'bing' ? 'count' : 'num', String(num));
-        url.searchParams.set('q', query);
-        url.searchParams.set('api_key', key);
-        const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-        if (!res.ok) throw new Error(`SerpAPI ${res.status}: ${(await res.text()).slice(0, 160)}`);
-        const j = (await res.json()) as {
-          answer_box?: { title?: string; answer?: string; snippet?: string; link?: string };
-          organic_results?: { title: string; link: string; snippet?: string }[];
-        };
-        const out: SearchResult[] = [];
-        if (j.answer_box && (j.answer_box.answer || j.answer_box.snippet)) out.push({ title: j.answer_box.title ?? 'Answer', url: j.answer_box.link ?? `serpapi:answer:${query}`, snippet: j.answer_box.answer ?? j.answer_box.snippet ?? '', source: engine });
-        for (const r of j.organic_results ?? []) out.push({ title: r.title, url: r.link, snippet: r.snippet ?? '', source: engine });
-        return { results: out.slice(0, num) };
+      const apiKey = (key || env.providerEnv.serpapi || '').replace(/['"]/g, '').trim();
+      const eng = engine || 'google';
+
+      // 1. Direct SerpAPI call if API key available in store or env
+      if (apiKey) {
+        try {
+          const url = new URL('https://serpapi.com/search.json');
+          url.searchParams.set('engine', eng);
+          url.searchParams.set(eng === 'bing' ? 'count' : 'num', String(num));
+          url.searchParams.set('q', query);
+          url.searchParams.set('api_key', apiKey);
+          const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+          if (res.ok) {
+            const j = (await res.json()) as {
+              answer_box?: { title?: string; answer?: string; snippet?: string; link?: string };
+              organic_results?: { title: string; link: string; snippet?: string }[];
+            };
+            const out: SearchResult[] = [];
+            if (j.answer_box && (j.answer_box.answer || j.answer_box.snippet)) {
+              out.push({
+                title: j.answer_box.title ?? 'Direct Answer',
+                url: j.answer_box.link ?? `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+                snippet: j.answer_box.answer ?? j.answer_box.snippet ?? '',
+                source: eng,
+              });
+            }
+            for (const r of j.organic_results ?? []) {
+              if (r.link) {
+                out.push({
+                  title: r.title || 'Search Result',
+                  url: r.link,
+                  snippet: r.snippet ?? '',
+                  source: eng,
+                });
+              }
+            }
+            if (out.length > 0) {
+              return { results: out.slice(0, num) };
+            }
+          }
+        } catch (e) {
+          console.error('Direct SerpAPI error:', e);
+        }
       }
+
+      // 2. Python backend sidecar (/search)
       if (env.helpersUrl) {
         try {
-          const res = await helper<{ links: string[] }>('/search', { search_queries: [{ query, category: 'FOUNDATIONAL' }] }, 15000);
+          const res = await helper<{
+            results?: { title?: string; link: string; snippet?: string; source?: string }[];
+            links?: string[];
+          }>(
+            '/search',
+            {
+              search_queries: [{ query, category: 'FOUNDATIONAL' }],
+              num,
+              engine: eng,
+            },
+            15_000,
+          );
+          if (res.results && res.results.length) {
+            return {
+              results: res.results.slice(0, num).map((r, i) => ({
+                title: r.title || `Search Result ${i + 1} for ${query}`,
+                url: r.link,
+                snippet: r.snippet || `Web search result matching "${query}"`,
+                source: r.source || eng,
+              })),
+            };
+          }
           if (res.links && res.links.length) {
             return {
               results: res.links.slice(0, num).map((url, i) => ({
                 title: `Search Result ${i + 1} for ${query}`,
                 url,
-                snippet: `Live search result retrieved via backend for ${query}`,
-                source: engine || 'brave',
+                snippet: `Web search result matching "${query}" from ${url}`,
+                source: eng,
               })),
             };
           }
-        } catch {}
+        } catch (e) {
+          console.error('Helper /search error:', e);
+        }
       }
-      return sim.search(query, engine, num);
+
+      return sim.search(query, eng, num);
     },
 
     async honeypot(messages, persona) {

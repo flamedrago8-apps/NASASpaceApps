@@ -359,7 +359,7 @@ const H: Record<NodeKind, Handler> = {
     const queries = s.queries.length ? s.queries : s.naiveQueries;
     const prof = PROFILE_SEARCH[ctx.profile];
     const engines = prof.engines > 1 ? [String(cfg.engine), String(cfg.engine) === 'bing' ? 'google' : 'bing'] : [String(cfg.engine)];
-    const num = ctx.profile === 'balanced' ? Number(cfg.num) : prof.num;
+    const num = Math.max(1, Number(cfg.num) || (ctx.profile === 'balanced' ? 6 : prof.num));
     const ttl = s.serpTtl;
     let calls = 0;
     let joined = 0;
@@ -423,7 +423,6 @@ const H: Record<NodeKind, Handler> = {
     const msgs = [...s.messages];
     if (s.results.length) {
       const context = s.results
-        .slice(0, 8)
         .map((r, i) => `[${i + 1}] ${r.title} — ${r.snippet} (${r.url})`)
         .join('\n');
       msgs.unshift({ role: 'system', content: `Live web results (cite as [n] when used):\n${context}` });
@@ -463,7 +462,6 @@ const H: Record<NodeKind, Handler> = {
       let text = lastUser(s.messages);
       if (s.results.length) {
         const context = s.results
-          .slice(0, 8)
           .map((r, i) => `[${i + 1}] ${r.title} — ${r.snippet} (${r.url})`)
           .join('\n');
         text = `[Live Web Search Context]:\n${context}\n\n[Altered Prompt Text]:\n${text}`;
@@ -689,11 +687,17 @@ function partitionKey(s: State): string {
 }
 
 function dedupeResults(rs: SearchResult[]): SearchResult[] {
-  const seen = new Set<string>();
+  const seenUrls = new Set<string>();
   return rs.filter((r) => {
-    const k = r.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
+    if (!r.url && !r.title) return false;
+    const rawUrl = (r.url || '').trim();
+    // Do not strip query string for search redirects (like google.com/goto?url=... or bing.com/ck)
+    const isRedirect = /google\.[a-z.]+\/(goto|url)|bing\.com\/ck/i.test(rawUrl);
+    const cleanUrl = (isRedirect ? rawUrl : rawUrl.replace(/[?#].*$/, '').replace(/\/$/, '')).toLowerCase();
+    const key = cleanUrl || r.title.trim().toLowerCase();
+
+    if (seenUrls.has(key)) return false;
+    seenUrls.add(key);
     return true;
   });
 }

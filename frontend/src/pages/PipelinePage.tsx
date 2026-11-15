@@ -395,13 +395,6 @@ function CopyButton({ text }: { text: string }) {
 
 function TestSummary({ r }: { r: TestResult }) {
   const [tab, setTab] = useState<'response' | 'json' | 'search'>('response');
-  const notes: string[] = [];
-  if (r.cache) notes.push(r.cache.kind === 'semantic' ? `answered from cache (${Math.round(r.cache.similarity * 100)}% similar question)` : 'answered from cache (same question)');
-  if (r.searchBypassed) notes.push('skipped web search: not needed');
-  if (r.searchSent) notes.push(`${r.searchSent} web search${r.searchSent > 1 ? 'es' : ''} instead of ${r.searchRaw}`);
-  if (r.io?.pii?.length) notes.push(`${r.io.pii.length} personal details hidden from the model`);
-  if (r.threat) notes.push(`${r.threat === 'jailbreak' ? 'jailbreak' : 'injection'} caught (${fmtPct(r.threatConfidence ?? 0)} sure)`);
-
   const searchResults: SearchResult[] = useMemo(() => {
     if (r.searchResults && r.searchResults.length > 0) return r.searchResults;
     if (!r.response || !r.response.includes('[Live Web Search Context]:')) return [];
@@ -420,6 +413,20 @@ function TestSummary({ r }: { r: TestResult }) {
     }
     return items;
   }, [r.searchResults, r.response]);
+
+  const notes: string[] = [];
+  if (r.cache) notes.push(r.cache.kind === 'semantic' ? `answered from cache (${Math.round(r.cache.similarity * 100)}% similar question)` : 'answered from cache (same question)');
+  if (r.searchBypassed) notes.push('skipped web search: not needed');
+  if (r.searchSent) {
+    if (r.searchSent < r.searchRaw) {
+      notes.push(`${r.searchSent} web search${r.searchSent > 1 ? 'es' : ''} instead of ${r.searchRaw} (saved ${r.searchRaw - r.searchSent})`);
+    } else {
+      const count = searchResults.length;
+      notes.push(`${r.searchSent} web search${r.searchSent > 1 ? 'es' : ''} executed (${count} result${count === 1 ? '' : 's'} retrieved)`);
+    }
+  }
+  if (r.io?.pii?.length) notes.push(`${r.io.pii.length} personal details hidden from the model`);
+  if (r.threat) notes.push(`${r.threat === 'jailbreak' ? 'jailbreak' : 'injection'} caught (${fmtPct(r.threatConfidence ?? 0)} sure)`);
 
   const jsonPayload = r.body ?? {
     id: `chatcmpl-${r.id}`,
@@ -641,17 +648,18 @@ function StepPanel({
         {isTool && node.enabled && fields.length > 0 && (
           <div className="space-y-4 border-t pt-5">
             {fields.map((f) => {
-              const v = node.config[f.key];
+              const v = node.config[f.key] ?? (CATALOG[kind].defaults as Record<string, unknown>)[f.key];
+              const numVal = typeof v === 'number' && !Number.isNaN(v) ? v : Number(v) || (f.type === 'slider' || f.type === 'number' ? f.min : 0);
               return (
                 <div key={f.key} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <Label className="text-sm font-normal">{f.label}</Label>
-                    {f.type === 'slider' && <span className="text-sm tabular-nums text-muted-foreground">{f.unit === '%' ? `${Math.round(Number(v) * 100)}%` : f.step < 1 ? Number(v).toFixed(2) : `${v}${f.unit ? ` ${f.unit}` : ''}`}</span>}
+                    {f.type === 'slider' && <span className="text-sm tabular-nums text-muted-foreground">{f.unit === '%' ? `${Math.round(numVal * 100)}%` : f.step < 1 ? numVal.toFixed(2) : `${numVal}${f.unit ? ` ${f.unit}` : ''}`}</span>}
                     {f.type === 'toggle' && <Toggle checked={Boolean(v)} onChange={(x) => onConfig(f.key, x)} label={f.label} />}
                   </div>
-                  {f.type === 'slider' && <SimpleSlider value={Number(v)} min={f.min} max={f.max} step={f.step} onChange={(x) => onConfig(f.key, x)} color="hsl(var(--primary))" />}
-                  {f.type === 'select' && <FriendlySelect value={String(v)} options={f.options} labels={f.labels} onChange={(x) => onConfig(f.key, x)} />}
-                  {f.type === 'number' && <TextInput type="number" min={f.min} max={f.max} value={Number(v)} suffix={f.unit} onChange={(e) => onConfig(f.key, Math.min(f.max, Math.max(f.min, Number(e.target.value) || f.min)))} />}
+                  {f.type === 'slider' && <SimpleSlider value={numVal} min={f.min} max={f.max} step={f.step} onChange={(x) => onConfig(f.key, x)} color="hsl(var(--primary))" />}
+                  {f.type === 'select' && <FriendlySelect value={String(v ?? '')} options={f.options} labels={f.labels} onChange={(x) => onConfig(f.key, x)} />}
+                  {f.type === 'number' && <TextInput type="number" min={f.min} max={f.max} value={numVal} suffix={f.unit} onChange={(e) => onConfig(f.key, Math.min(f.max, Math.max(f.min, Number(e.target.value) || f.min)))} />}
                   {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
                 </div>
               );
